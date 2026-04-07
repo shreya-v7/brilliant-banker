@@ -116,3 +116,63 @@ class SMBProfile(BaseModel):
     payment_history: float
     phone: str
     ai_brief: str | None = None
+
+
+# --- Banker ---
+
+
+class BankerOut(BaseModel):
+    banker_id: str
+    name: str
+    title: str
+    region: str
+    email: str
+
+
+class BankerLoginRequest(BaseModel):
+    banker_id: str
+
+
+class PortfolioSMB(BaseModel):
+    id: UUID
+    name: str
+    business_type: str
+    annual_revenue: int
+    avg_monthly_revenue: int
+    cash_stability: float
+    payment_history: float
+    phone: str
+
+
+class PortfolioOut(BaseModel):
+    smbs: list[PortfolioSMB]
+
+
+class TransactionOut(BaseModel):
+    id: UUID
+    description: str
+    amount: int
+    category: str
+    txn_date: datetime
+
+
+class SMBLeadOut(BaseModel):
+    id: UUID
+    status: str
+    requested_amount: int | None
+    credit_score: float | None
+    urgency_score: float
+    reason: str | None = None
+    created_at: datetime | None = None
+    notification_text: str | None = None
+
+
+class BankerNoteOut(BaseModel):
+    id: UUID
+    note: str
+    banker_name: str
+    created_at: datetime
+
+
+class BankerNoteRequest(BaseModel):
+    note: str

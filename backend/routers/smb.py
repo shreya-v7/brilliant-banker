@@ -6,8 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.db.postgres import SMB, get_session
-from backend.models.schemas import SMBProfile
+from backend.db.postgres import SMB, Lead, LeadEvent, Transaction, get_session
+from backend.models.schemas import SMBProfile, TransactionOut, SMBLeadOut
 from backend.services.claude_service import generate_ai_brief
 
 router = APIRouter(tags=["smb"])
@@ -29,16 +29,19 @@ async def get_smb_profile(
     if not smb:
         raise HTTPException(status_code=404, detail="SMB not found")
 
-    brief = await generate_ai_brief(
-        {
-            "name": smb.name,
-            "business_type": smb.business_type,
-            "annual_revenue": smb.annual_revenue,
-            "avg_monthly_revenue": smb.avg_monthly_revenue,
-            "cash_stability": smb.cash_stability,
-            "payment_history": smb.payment_history,
-        }
-    )
+    try:
+        brief = await generate_ai_brief(
+            {
+                "name": smb.name,
+                "business_type": smb.business_type,
+                "annual_revenue": smb.annual_revenue,
+                "avg_monthly_revenue": smb.avg_monthly_revenue,
+                "cash_stability": smb.cash_stability,
+                "payment_history": smb.payment_history,
+            }
+        )
+    except Exception:
+        brief = None
 
     return SMBProfile(
         id=smb.id,
@@ -51,3 +54,69 @@ async def get_smb_profile(
         phone=smb.phone,
         ai_brief=brief,
     )
+
+
+@router.get(
+    "/smb/{smb_id}/transactions",
+    response_model=list[TransactionOut],
+    summary="Get recent transactions for an SMB",
+)
+async def get_transactions(
+    smb_id: str,
+    limit: int = 20,
+    session: AsyncSession = Depends(get_session),
+):
+    result = await session.execute(
+        select(Transaction)
+        .where(Transaction.smb_id == uuid.UUID(smb_id))
+        .order_by(Transaction.txn_date.desc())
+        .limit(limit)
+    )
+    txns = result.scalars().all()
+    return [
+        TransactionOut(
+            id=t.id,
+            description=t.description,
+            amount=t.amount,
+            category=t.category,
+            txn_date=t.txn_date,
+        )
+        for t in txns
+    ]
+
+
+@router.get(
+    "/smb/{smb_id}/escalations",
+    response_model=list[SMBLeadOut],
+    summary="Get all escalations (leads) created by this SMB",
+)
+async def get_smb_escalations(
+    smb_id: str,
+    session: AsyncSession = Depends(get_session),
+):
+    result = await session.execute(
+        select(Lead)
+        .where(Lead.smb_id == uuid.UUID(smb_id))
+        .order_by(Lead.created_at.desc())
+    )
+    leads = result.scalars().all()
+
+    out = []
+    for lead in leads:
+        # Get latest event notification if any
+        latest_notification = None
+        if lead.events:
+            latest_event = sorted(lead.events, key=lambda e: e.created_at or 0, reverse=True)[0]
+            latest_notification = latest_event.sms_sent
+
+        out.append(SMBLeadOut(
+            id=lead.id,
+            status=lead.status,
+            requested_amount=lead.requested_amount,
+            credit_score=lead.credit_score,
+            urgency_score=lead.urgency_score,
+            reason=lead.reason,
+            created_at=lead.created_at,
+            notification_text=latest_notification,
+        ))
+    return out

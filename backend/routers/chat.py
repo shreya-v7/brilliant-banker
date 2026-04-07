@@ -11,7 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.agent.graph import run_agent
 from backend.db.mongo_client import get_history, save_message
-from backend.db.postgres import SMB, get_session
+from backend.db.postgres import SMB, Banker, get_session
+from backend.models.schemas import BankerOut, BankerLoginRequest
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["chat"])
@@ -89,6 +90,42 @@ async def list_users(session: AsyncSession = Depends(get_session)):
         )
         for s in smbs
     ]
+
+
+@router.get("/auth/bankers", response_model=list[BankerOut])
+async def list_bankers(session: AsyncSession = Depends(get_session)):
+    result = await session.execute(select(Banker).order_by(Banker.name))
+    bankers = result.scalars().all()
+    return [
+        BankerOut(
+            banker_id=str(b.id),
+            name=b.name,
+            title=b.title,
+            region=b.region,
+            email=b.email,
+        )
+        for b in bankers
+    ]
+
+
+@router.post("/auth/banker-login", response_model=BankerOut)
+async def banker_login(
+    body: BankerLoginRequest,
+    session: AsyncSession = Depends(get_session),
+):
+    result = await session.execute(
+        select(Banker).where(Banker.id == uuid.UUID(body.banker_id))
+    )
+    banker = result.scalar_one_or_none()
+    if not banker:
+        raise HTTPException(status_code=404, detail="Banker not found")
+    return BankerOut(
+        banker_id=str(banker.id),
+        name=banker.name,
+        title=banker.title,
+        region=banker.region,
+        email=banker.email,
+    )
 
 
 @router.post("/chat", response_model=ChatResponse)
