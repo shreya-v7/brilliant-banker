@@ -175,6 +175,91 @@ brilliant-banker/
         └── seed_data.py       # Seed 5 mock SMBs
 ```
 
+## Demo Walkthrough
+
+### 1. Log in as a Banker
+
+On the login screen, tap the **PNC Banker** tab (not Business Owner). Select one of the demo bankers:
+
+| Name | Title |
+|------|-------|
+| Sarah Chen | Senior Business Banking Advisor |
+| Marcus Williams | SMB Relationship Manager |
+| Jordan Patel | Business Credit Specialist |
+
+---
+
+### 2. Banker Dashboard (mobile app)
+
+You land on the Banker Dashboard inside the mobile shell. This shows:
+- **Hero strip** — client count, pending decisions, at-risk count
+- **Portfolio Overview** — 4 metric cards (revenue, monthly avg, credit requested, approved)
+- **Credit Pipeline** — status bar + recent decisions
+- **Priority Queue** — pending leads ranked by urgency
+- **Portfolio Health** — donut chart + per-client stability bars
+- **Top Clients by Revenue**, **Needs Attention**, **Payment History**, **Quick Actions**
+
+---
+
+### 3. RM Command Center (full-screen dashboard)
+
+Open a new tab and go to:
+
+```
+http://localhost:5173/rm-dashboard.html
+```
+
+Key things to point out:
+- **SMB Revenue Timeline** — hover over any point to see each client's daily revenue. Five colored lines, one per SMB.
+- **Client Portfolio table** — sorted by risk (lowest stability first). Red stability bars signal who needs a call.
+- **Credit Pipeline** — full funnel from pending → approved/referred/declined with amounts.
+- **Activity Feed** — surfaces pending decisions, completed decisions, and at-risk alerts in one place.
+
+---
+
+### 4. Review a Credit Request
+
+Back in the mobile app, tap **Credit Review** (bottom nav or Quick Actions). Expand a pending lead:
+
+1. Read the **AI Pre-call Brief** — a 30-second summary of the client's financial health
+2. Review the **Conversation Playbook** — talking points for the call
+3. Set an **approved amount** (pre-filled from the request)
+4. Tap **Approve**, **Decline**, or **Refer**
+
+The decision updates immediately and Claude drafts a plain-language notification for the SMB.
+
+---
+
+### 5. Explore a Client Profile
+
+Tap **My Clients** → select any client (e.g. Melissa Murphy). The 4-tab profile shows:
+
+| Tab | Content |
+|-----|---------|
+| **Overview** | Stats grid, AI brief (tap Generate), cash stability ring |
+| **Transactions** | 30-day summary (income/expense/net) + full transaction list |
+| **Credit History** | All past loan requests with status |
+| **Notes** | Pre-seeded banker notes + add your own |
+
+---
+
+### 6. Guided Demo Mode
+
+Tap the floating **Demo** button (bottom-right of any screen) to open the step-by-step guide. It walks through the full end-to-end story with navigation shortcuts and prompt chips that auto-inject messages into the SMB chat.
+
+---
+
+### Full End-to-End Story
+
+1. **SMB side** — Melissa Murphy (restaurant owner) opens chat and asks for a $35K credit line
+2. **AI escalates** — LangGraph detects the amount > $10K, runs pre-qual, creates a lead with urgency 0.85
+3. **RM gets notified** — Melissa appears at #1 in the Priority Queue with a "High" urgency badge
+4. **RM reviews** — Opens credit review, generates the AI brief, reviews the conversation playbook
+5. **RM decides** — Approves with an amount; Claude drafts the approval notification
+6. **SMB sees result** — Melissa's Activity tab shows "approved" with the notification text
+
+---
+
 ## Design Decisions
 
 - **PNC brand theme**: Navy (#002D5F) and orange (#E35205) throughout, mobile-first responsive layout

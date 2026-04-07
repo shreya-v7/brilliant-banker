@@ -1,11 +1,21 @@
 import { useState, useCallback } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
+
+// SMB pages
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Chat from './pages/Chat'
 import Activity from './pages/Activity'
 import Profile from './pages/Profile'
 import Layout from './components/Layout'
+
+// Banker pages
+import BankerLayout from './components/BankerLayout'
+import BankerDashboard from './pages/banker/BankerDashboard'
+import BankerClients from './pages/banker/BankerClients'
+import BankerCreditReview from './pages/banker/BankerCreditReview'
+import BankerSMBProfile from './pages/banker/BankerSMBProfile'
+import BankerProfile from './pages/banker/BankerProfile'
 
 export default function App() {
   const [user, setUser] = useState(null)
@@ -18,6 +28,23 @@ export default function App() {
     return <Login onLogin={setUser} />
   }
 
+  // ── Banker shell ────────────────────────────────────────────────────────────
+  if (user.role === 'banker') {
+    return (
+      <BankerLayout user={user}>
+        <Routes>
+          <Route path="/banker" element={<BankerDashboard user={user} />} />
+          <Route path="/banker/clients" element={<BankerClients user={user} />} />
+          <Route path="/banker/clients/:id" element={<BankerSMBProfile user={user} />} />
+          <Route path="/banker/credit" element={<BankerCreditReview user={user} />} />
+          <Route path="/banker/profile" element={<BankerProfile user={user} onLogout={handleLogout} />} />
+          <Route path="*" element={<Navigate to="/banker" replace />} />
+        </Routes>
+      </BankerLayout>
+    )
+  }
+
+  // ── SMB owner shell ─────────────────────────────────────────────────────────
   return (
     <Layout user={user}>
       <Routes>

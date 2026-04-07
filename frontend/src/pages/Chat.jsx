@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { getChatHistory, sendMessage } from '../api'
 import { ArrowLeft, Send, Bot, Sparkles } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 
 const SUGGESTIONS = [
   "What's my cash flow forecast?",
@@ -59,6 +59,16 @@ export default function Chat({ user }) {
   const scrollRef = useRef(null)
   const inputRef = useRef(null)
   const navigate = useNavigate()
+  const location = useLocation()
+
+  // Accept demo prompt injected from DemoGuide
+  useEffect(() => {
+    if (location.state?.demoPrompt && loaded) {
+      setInput(location.state.demoPrompt)
+      // Clear the state so it doesn't re-trigger on re-render
+      navigate('/chat', { replace: true, state: {} })
+    }
+  }, [location.state?.demoPrompt, loaded])
 
   useEffect(() => {
     getChatHistory(user.smb_id)

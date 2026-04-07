@@ -12,41 +12,81 @@ async function request(path, options = {}) {
   return res.json();
 }
 
-export function getUsers() {
-  return request('/auth/users');
+async function rawRequest(path, options = {}) {
+  const res = await fetch(path, {
+    headers: { 'Content-Type': 'application/json' },
+    ...options,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || 'Request failed');
+  }
+  return res.json();
 }
+
+// ── SMB Auth ──────────────────────────────────────────────────────────────────
+
+export function getUsers()  { return request('/auth/users'); }
 
 export function login(smb_id) {
-  return request('/auth/login', {
-    method: 'POST',
-    body: JSON.stringify({ smb_id }),
-  });
+  return request('/auth/login', { method: 'POST', body: JSON.stringify({ smb_id }) });
 }
 
+// ── Banker Auth ───────────────────────────────────────────────────────────────
+
+export function getBankers()  { return request('/auth/bankers'); }
+
+export function bankerLogin(banker_id) {
+  return request('/auth/banker-login', { method: 'POST', body: JSON.stringify({ banker_id }) });
+}
+
+// ── SMB Chat ──────────────────────────────────────────────────────────────────
+
 export function sendMessage(smb_id, message) {
-  return request('/chat', {
-    method: 'POST',
-    body: JSON.stringify({ smb_id, message }),
-  });
+  return request('/chat', { method: 'POST', body: JSON.stringify({ smb_id, message }) });
 }
 
 export function getChatHistory(smb_id) {
   return request(`/chat/${smb_id}/history?limit=50`);
 }
 
+// ── SMB Data ──────────────────────────────────────────────────────────────────
+
+export function getSMBProfile(smbId)       { return rawRequest(`/smb/${smbId}/profile`); }
+export function getTransactions(smbId)     { return rawRequest(`/smb/${smbId}/transactions?limit=20`); }
+export function getSMBEscalations(smbId)   { return rawRequest(`/smb/${smbId}/escalations`); }
+
+// ── Banker: Leads / Credit ────────────────────────────────────────────────────
+
 export function getLeads(status) {
   const qs = status ? `?status=${status}` : '';
-  return fetch(`/banker/leads${qs}`).then(r => r.json());
+  return rawRequest(`/banker/leads${qs}`);
 }
 
-export function submitDecision(leadId, body) {
-  return fetch(`/banker/leads/${leadId}/decision`, {
+export function submitDecision(leadId, body, bankerId) {
+  const qs = bankerId ? `?banker_id=${bankerId}` : '';
+  return rawRequest(`/banker/leads/${leadId}/decision${qs}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
-  }).then(r => r.json());
+  });
 }
 
-export function getSMBProfile(smbId) {
-  return fetch(`/smb/${smbId}/profile`).then(r => r.json());
+// ── Banker: Portfolio ─────────────────────────────────────────────────────────
+
+export function getBankerPortfolio() { return rawRequest('/banker/portfolio'); }
+
+// ── Banker: SMB Profile + Brief ───────────────────────────────────────────────
+
+export function getBankerSMBBrief(smbId) { return rawRequest(`/smb/${smbId}/profile`); }
+
+// ── Banker: Notes ─────────────────────────────────────────────────────────────
+
+export function getBankerNotes(smbId)  { return rawRequest(`/banker/smb/${smbId}/notes`); }
+
+export function addBankerNote(smbId, note, bankerId) {
+  const qs = bankerId ? `?banker_id=${bankerId}` : '';
+  return rawRequest(`/banker/smb/${smbId}/notes${qs}`, {
+    method: 'POST',
+    body: JSON.stringify({ note }),
+  });
 }

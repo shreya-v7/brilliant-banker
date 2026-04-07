@@ -1,20 +1,20 @@
 import { useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import BottomNav from './BottomNav'
+import BankerBottomNav from './BankerBottomNav'
 import DemoGuide from './DemoGuide'
 import { Sparkles } from 'lucide-react'
 
 const TITLES = {
-  '/': 'Home',
-  '/chat': 'Brilliant Banker',
-  '/activity': 'Activity',
-  '/profile': 'Profile',
+  '/banker': 'Dashboard',
+  '/banker/clients': 'My Clients',
+  '/banker/credit': 'Credit Review',
+  '/banker/profile': 'My Profile',
 }
 
-export default function Layout({ user, children }) {
+export default function BankerLayout({ user, children }) {
   const { pathname } = useLocation()
   const title = TITLES[pathname] || 'Brilliant Banker'
-  const hideHeader = pathname === '/chat'
+  const hideHeader = pathname.startsWith('/banker/clients/')
   const [showDemo, setShowDemo] = useState(false)
 
   return (
@@ -23,16 +23,22 @@ export default function Layout({ user, children }) {
         <header className="bg-pnc-navy px-4 pt-3 pb-3 flex items-center justify-between shrink-0">
           <div>
             <h1 className="text-white text-lg font-semibold">{title}</h1>
-            {pathname === '/' && (
+            {pathname === '/banker' && (
               <p className="text-pnc-gray-200 text-xs mt-0.5">
-                Welcome, {user.name.split(' ')[0]}
+                Welcome back, {user.name.split(' ')[0]}
               </p>
             )}
           </div>
-          <div className="w-9 h-9 rounded-full bg-pnc-orange flex items-center justify-center">
-            <span className="text-white text-sm font-bold">
-              {user.name.split(' ').map(n => n[0]).join('')}
-            </span>
+          <div className="flex items-center gap-2">
+            <div className="text-right">
+              <p className="text-white/60 text-[10px]">PNC Banker</p>
+              <p className="text-white text-xs font-semibold">{user.title}</p>
+            </div>
+            <div className="w-9 h-9 rounded-full bg-pnc-orange flex items-center justify-center">
+              <span className="text-white text-sm font-bold">
+                {user.name.split(' ').map(n => n[0]).join('')}
+              </span>
+            </div>
           </div>
         </header>
       )}
@@ -41,7 +47,7 @@ export default function Layout({ user, children }) {
         {children}
       </main>
 
-      <BottomNav />
+      <BankerBottomNav />
 
       {/* Floating demo button */}
       <button
@@ -55,7 +61,7 @@ export default function Layout({ user, children }) {
       </button>
 
       {showDemo && (
-        <DemoGuide userRole="smb" onClose={() => setShowDemo(false)} />
+        <DemoGuide userRole="banker" onClose={() => setShowDemo(false)} />
       )}
     </div>
   )
