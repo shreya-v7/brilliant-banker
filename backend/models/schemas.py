@@ -67,15 +67,27 @@ class FAQResult(BaseModel):
     confidence: float
 
 
+# --- RM Contact ---
+
+
+class RMContact(BaseModel):
+    name: str
+    title: str
+    email: str
+    region: str
+
+
 # --- Escalation ---
 
 
 class EscalationResult(BaseModel):
     lead_id: str
+    ticket_number: str
     smb_id: str
     reason: str
     urgency: str
     status: str = "pending"
+    assigned_rm: RMContact | None = None
 
 
 # --- Banker API ---
@@ -83,6 +95,7 @@ class EscalationResult(BaseModel):
 
 class LeadOut(BaseModel):
     id: UUID
+    ticket_number: str = ""
     smb_id: UUID
     smb_name: str | None = None
     business_type: str | None = None
@@ -92,6 +105,7 @@ class LeadOut(BaseModel):
     urgency_score: float
     reason: str | None = None
     created_at: datetime | None = None
+    assigned_rm_name: str | None = None
 
 
 class DecisionRequest(BaseModel):
@@ -158,6 +172,7 @@ class TransactionOut(BaseModel):
 
 class SMBLeadOut(BaseModel):
     id: UUID
+    ticket_number: str = ""
     status: str
     requested_amount: int | None
     credit_score: float | None
@@ -165,6 +180,7 @@ class SMBLeadOut(BaseModel):
     reason: str | None = None
     created_at: datetime | None = None
     notification_text: str | None = None
+    assigned_rm: RMContact | None = None
 
 
 class BankerNoteOut(BaseModel):

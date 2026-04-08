@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.db.mongo_client import close_mongo
 from backend.db.postgres import init_db
-from backend.routers import banker, chat, smb
+from backend.routers import banker, chat, smb, stream
 
 logging.basicConfig(
     level=logging.INFO,
@@ -44,6 +44,7 @@ app.add_middleware(
 app.include_router(chat.router)
 app.include_router(banker.router)
 app.include_router(smb.router)
+app.include_router(stream.router)
 
 
 @app.get("/health", tags=["health"])

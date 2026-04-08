@@ -120,7 +120,7 @@ export default function BankerClients() {
           <p className="text-pnc-gray-500 text-sm">No clients found</p>
         </div>
       ) : (
-        <div className="space-y-2.5">
+        <div className="grid lg:grid-cols-2 gap-3">
           {filtered.map((client) => (
             <button
               key={client.id}

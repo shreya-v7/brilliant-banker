@@ -149,9 +149,14 @@ function LeadCard({ lead, onDecide, user }) {
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-pnc-gray-900 text-sm font-semibold truncate">{lead.smb_name || 'Unknown'}</p>
-          <p className="text-pnc-gray-500 text-xs mt-0.5">
-            {lead.business_type} · {fmt(lead.requested_amount)}
-          </p>
+          <div className="flex items-center gap-2 mt-0.5">
+            {lead.ticket_number && (
+              <span className="text-pnc-orange text-[9px] font-bold">{lead.ticket_number}</span>
+            )}
+            <p className="text-pnc-gray-500 text-xs">
+              {lead.business_type} · {fmt(lead.requested_amount)}
+            </p>
+          </div>
         </div>
         <div className="flex flex-col items-end gap-1 shrink-0">
           <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${cfg.bg} ${cfg.color}`}>
@@ -353,7 +358,7 @@ export default function BankerCreditReview({ user }) {
           <p className="text-pnc-gray-500 text-sm">No leads yet</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid lg:grid-cols-2 gap-3">
           {leads.map(lead => (
             <LeadCard key={lead.id} lead={lead} onDecide={handleDecide} user={user} />
           ))}

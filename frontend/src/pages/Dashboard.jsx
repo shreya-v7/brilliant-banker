@@ -138,7 +138,7 @@ export default function Dashboard({ user }) {
               latestDecision.status === 'declined' ? 'text-red-800' : 'text-blue-800'
             }`}>
               {latestDecision.status === 'approved' ? '🎉 Credit Line Approved' :
-               latestDecision.status === 'declined' ? 'Credit Decision' : 'Update from Your Banker'}
+               latestDecision.status === 'declined' ? 'Credit Decision' : 'Update from Your RM'}
             </p>
             <p className={`text-sm ${
               latestDecision.status === 'approved' ? 'text-green-700' :
@@ -156,7 +156,7 @@ export default function Dashboard({ user }) {
             <div className="flex-1">
               <p className="text-amber-800 text-sm font-semibold">Credit request in review</p>
               <p className="text-amber-700 text-xs mt-0.5">
-                Your {fmt(pendingEscalation.requested_amount)} request is pending banker review.
+                Your {fmt(pendingEscalation.requested_amount)} request is pending RM review.
               </p>
             </div>
             <button onClick={() => navigate('/activity')} className="text-amber-700 shrink-0">

@@ -27,6 +27,7 @@ class AgentState(TypedDict, total=False):
     tool_result: dict[str, Any]
     reply: str
     escalated: bool
+    escalation_result: dict[str, Any]
 
 
 def _parse_amount_from_message(message: str) -> int:
@@ -83,7 +84,14 @@ async def tool_router_node(state: AgentState) -> dict:
     elif intent == "faq_question":
         result = await search_faq(message)
     elif intent == "escalate_to_banker":
-        result = await escalate_to_banker(smb_id, reason=message, urgency="high")
+        amount = _parse_amount_from_message(message)
+        has_amount = amount != 50_000
+        result = await escalate_to_banker(
+            smb_id,
+            reason=message,
+            urgency="high",
+            requested_amount=amount if has_amount else None,
+        )
     else:
         result = {"response": "general_chat", "message": message}
 
@@ -112,14 +120,21 @@ async def escalation_checker_node(state: AgentState) -> dict:
         if requested > 10_000:
             smb_id = state["smb_id"]
             eligible = tool_result.get("eligible", False)
+            probability = tool_result.get("probability", 0.0)
             reason = (
                 f"Loan request of ${requested:,} — "
                 f"{'pre-qualified' if eligible else 'not pre-qualified'}. "
                 f"Auto-escalated (amount > $10K)."
             )
-            await escalate_to_banker(smb_id, reason=reason, urgency="high")
-            logger.info("Auto-escalated: smb_id=%s amount=%d", smb_id, requested)
-            return {"escalated": True}
+            esc_result = await escalate_to_banker(
+                smb_id,
+                reason=reason,
+                urgency="high",
+                requested_amount=requested,
+                credit_score=probability,
+            )
+            logger.info("Auto-escalated: smb_id=%s amount=%d score=%.2f", smb_id, requested, probability)
+            return {"escalated": True, "escalation_result": esc_result}
 
     return {"escalated": False}
 
@@ -159,6 +174,7 @@ async def run_agent(
         "tool_result": {},
         "reply": "",
         "escalated": False,
+        "escalation_result": {},
     }
     result = await agent.ainvoke(initial_state)
     return result

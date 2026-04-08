@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { getChatHistory, sendMessage } from '../api'
-import { ArrowLeft, Send, Bot, Sparkles } from 'lucide-react'
+import { ArrowLeft, Send, Bot, Sparkles, Mail, Phone, Ticket, User } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 
 const SUGGESTIONS = [
@@ -97,7 +97,15 @@ export default function Chat({ user }) {
       const res = await sendMessage(user.smb_id, msg)
       setMessages(prev => [
         ...prev,
-        { role: 'assistant', content: res.reply, intent: res.intent, escalated: res.escalated, animate: true },
+        {
+          role: 'assistant',
+          content: res.reply,
+          intent: res.intent,
+          escalated: res.escalated,
+          ticket_number: res.ticket_number,
+          assigned_rm: res.assigned_rm,
+          animate: true,
+        },
       ])
     } catch {
       setMessages(prev => [
@@ -147,7 +155,7 @@ export default function Chat({ user }) {
               Hi {user.name.split(' ')[0]}!
             </h2>
             <p className="text-pnc-gray-500 text-sm mt-1.5 max-w-[260px]">
-              I can help you check cash flow, explore credit options, answer account questions, or connect you with a banker.
+              I can help you check cash flow, explore credit options, answer account questions, or connect you with your Relationship Manager.
             </p>
             <div className="mt-6 w-full space-y-2">
               {SUGGESTIONS.map((s) => (
@@ -191,9 +199,39 @@ export default function Chat({ user }) {
                   >
                     {m.content}
                   </div>
-                  {m.escalated && m.role === 'assistant' && (
+                  {m.escalated && m.role === 'assistant' && m.assigned_rm && (
+                    <div className="mt-2 bg-pnc-navy/5 border border-pnc-navy/10 rounded-xl p-3 space-y-2">
+                      {m.ticket_number && (
+                        <div className="flex items-center gap-1.5">
+                          <Ticket size={12} className="text-pnc-orange" />
+                          <span className="text-[10px] font-bold text-pnc-orange tracking-wide">
+                            {m.ticket_number}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-pnc-navy flex items-center justify-center shrink-0">
+                          <span className="text-white text-[10px] font-bold">
+                            {m.assigned_rm.name.split(' ').map(n => n[0]).join('')}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="text-pnc-gray-900 text-xs font-semibold">{m.assigned_rm.name}</p>
+                          <p className="text-pnc-gray-500 text-[10px]">{m.assigned_rm.title}</p>
+                        </div>
+                      </div>
+                      <a
+                        href={`mailto:${m.assigned_rm.email}`}
+                        className="flex items-center gap-1.5 text-pnc-navy text-xs font-medium active:opacity-70"
+                      >
+                        <Mail size={12} />
+                        {m.assigned_rm.email}
+                      </a>
+                    </div>
+                  )}
+                  {m.escalated && m.role === 'assistant' && !m.assigned_rm && (
                     <p className="text-[10px] text-amber-600 mt-1 ml-1 font-medium">
-                      A banker has been notified
+                      Your Relationship Manager has been notified
                     </p>
                   )}
                 </div>

@@ -11,8 +11,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.agent.graph import run_agent
 from backend.db.mongo_client import get_history, save_message
-from backend.db.postgres import SMB, Banker, get_session
-from backend.models.schemas import BankerOut, BankerLoginRequest
+from backend.db.postgres import SMB, Banker, get_session, async_session
+from backend.models.schemas import BankerOut, BankerLoginRequest, RMContact
+from backend.services.claude_service import generate_rm_highlight
+from backend.services.stream_service import publish_event, chat_highlight_event, escalation_event
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["chat"])
@@ -23,10 +25,17 @@ class ChatRequest(BaseModel):
     message: str
 
 
+class RMContactOut(BaseModel):
+    name: str
+    title: str
+    email: str
+
 class ChatResponse(BaseModel):
     reply: str
     intent: str
     escalated: bool
+    ticket_number: str | None = None
+    assigned_rm: RMContactOut | None = None
 
 
 class LoginRequest(BaseModel):
@@ -148,11 +157,77 @@ async def chat(body: ChatRequest):
     reply = result.get("reply", "Sorry, something went wrong. Please try again.")
     intent = result.get("intent", "")
     escalated = result.get("escalated", False)
+    tool_result = result.get("tool_result", {})
+    escalation_result = result.get("escalation_result", {})
+
+    # For auto-escalations, merge the escalation result into tool_result for stream
+    esc_source = tool_result if tool_result.get("ticket_number") else escalation_result
 
     await save_message(smb_id, "user", message)
     await save_message(smb_id, "assistant", reply)
 
-    return ChatResponse(reply=reply, intent=intent, escalated=escalated)
+    # Extract ticket + RM info from whichever source has it
+    ticket_number = esc_source.get("ticket_number")
+    rm_data = esc_source.get("assigned_rm")
+    assigned_rm = None
+    if rm_data and isinstance(rm_data, dict):
+        assigned_rm = RMContactOut(
+            name=rm_data.get("name", ""),
+            title=rm_data.get("title", ""),
+            email=rm_data.get("email", ""),
+        )
+
+    # Publish to RM stream (fire-and-forget — don't block the response)
+    try:
+        smb_name = tool_result.get("smb_name") or await _resolve_smb_name(smb_id)
+
+        highlight = await generate_rm_highlight(
+            smb_name=smb_name,
+            intent=intent,
+            message=message,
+            tool_result=tool_result,
+            escalated=escalated,
+        )
+
+        urgency = "high" if escalated else (
+            "medium" if intent in ("credit_prequal_request", "cash_flow_query") else "low"
+        )
+        requested_amount = tool_result.get("requested_amount")
+
+        event = chat_highlight_event(
+            smb_id=smb_id,
+            smb_name=smb_name,
+            intent=intent,
+            highlight=highlight,
+            escalated=escalated,
+            urgency=urgency,
+            requested_amount=requested_amount,
+            ticket_number=ticket_number,
+            rm_name=assigned_rm.name if assigned_rm else None,
+        )
+        await publish_event(event)
+    except Exception as e:
+        logger.warning("Failed to publish stream event: %s", e)
+
+    return ChatResponse(
+        reply=reply,
+        intent=intent,
+        escalated=escalated,
+        ticket_number=ticket_number,
+        assigned_rm=assigned_rm,
+    )
+
+
+async def _resolve_smb_name(smb_id: str) -> str:
+    """Quick lookup of SMB name for stream events."""
+    try:
+        async with async_session() as session:
+            result = await session.execute(
+                select(SMB.name).where(SMB.id == uuid.UUID(smb_id))
+            )
+            return result.scalar_one_or_none() or smb_id
+    except Exception:
+        return smb_id
 
 
 @router.get("/chat/{smb_id}/history", response_model=list[HistoryMessage])

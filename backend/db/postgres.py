@@ -52,6 +52,7 @@ class Lead(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     smb_id = Column(UUID(as_uuid=True), ForeignKey("smbs.id"), nullable=False)
+    assigned_banker_id = Column(UUID(as_uuid=True), ForeignKey("bankers.id"), nullable=True)
     status = Column(String(20), nullable=False, default="pending")
     requested_amount = Column(Integer, nullable=True)
     credit_score = Column(Float, nullable=True)
@@ -60,6 +61,7 @@ class Lead(Base):
     created_at = Column(DateTime, server_default=func.now())
 
     smb = relationship("SMB", back_populates="leads", lazy="selectin")
+    assigned_banker = relationship("Banker", foreign_keys=[assigned_banker_id], lazy="selectin")
     events = relationship("LeadEvent", back_populates="lead", lazy="selectin")
 
 

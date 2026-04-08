@@ -90,3 +90,28 @@ export function addBankerNote(smbId, note, bankerId) {
     body: JSON.stringify({ note }),
   });
 }
+
+// ── RM Event Stream (SSE) ─────────────────────────────────────────────────────
+
+export function connectRMStream(onEvent) {
+  const source = new EventSource('/banker/stream');
+
+  source.addEventListener('chat_highlight', (e) => {
+    onEvent(JSON.parse(e.data));
+  });
+
+  source.addEventListener('escalation', (e) => {
+    onEvent(JSON.parse(e.data));
+  });
+
+  source.addEventListener('decision', (e) => {
+    onEvent(JSON.parse(e.data));
+  });
+
+  source.onerror = () => {
+    source.close();
+    setTimeout(() => connectRMStream(onEvent), 3000);
+  };
+
+  return source;
+}

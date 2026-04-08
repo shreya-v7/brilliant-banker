@@ -18,6 +18,7 @@ from backend.models.schemas import (
     BankerNoteRequest,
 )
 from backend.services.notify_service import draft_decision_notification
+from backend.services.stream_service import publish_event, decision_event
 
 router = APIRouter(prefix="/banker", tags=["banker"])
 
@@ -58,9 +59,11 @@ async def list_leads(
     out = []
     for lead in leads:
         smb = lead.smb
+        hex_part = str(lead.id).replace("-", "")[:6].upper()
         out.append(
             LeadOut(
                 id=lead.id,
+                ticket_number=f"TKT-{hex_part}",
                 smb_id=lead.smb_id,
                 smb_name=smb.name if smb else None,
                 business_type=smb.business_type if smb else None,
@@ -70,6 +73,7 @@ async def list_leads(
                 urgency_score=lead.urgency_score,
                 reason=lead.reason,
                 created_at=lead.created_at,
+                assigned_rm_name=lead.assigned_banker.name if lead.assigned_banker else None,
             )
         )
     return out
@@ -121,10 +125,22 @@ async def create_decision(
         )
     except Exception:
         action_word = "approved" if body.action == "approved" else ("declined" if body.action == "declined" else "referred")
-        notification_text = f"Your credit request has been {action_word}. Please contact your banker for more details."
+        notification_text = f"Your credit request has been {action_word}. Your Relationship Manager will follow up with details."
 
     event.sms_sent = notification_text
     await session.commit()
+
+    # Publish decision to RM stream
+    try:
+        await publish_event(decision_event(
+            smb_id=str(smb.id),
+            smb_name=smb.name,
+            action=body.action,
+            amount=body.amount,
+            notification_text=notification_text,
+        ))
+    except Exception:
+        pass
 
     return DecisionResponse(
         lead_id=str(lead.id),

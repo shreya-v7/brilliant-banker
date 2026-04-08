@@ -221,34 +221,38 @@ export default function BankerDashboard({ user }) {
   return (
     <div className="pb-6">
 
-      {/* ── Hero strip (continues from header bg) ── */}
-      <div className="bg-pnc-navy px-4 pb-5 pt-1">
-        <div className="grid grid-cols-3 gap-2">
-          <div className="bg-white/10 rounded-xl p-3 text-center">
-            <p className="text-white/50 text-[9px] uppercase tracking-wider mb-1">Clients</p>
-            <p className="text-white text-2xl font-bold">{loading ? '--' : smbs.length}</p>
-          </div>
-          <div className="bg-white/10 rounded-xl p-3 text-center">
-            <p className="text-white/50 text-[9px] uppercase tracking-wider mb-1">Pending</p>
-            <p className={`text-2xl font-bold ${leads.length > 0 ? 'text-pnc-orange' : 'text-white'}`}>
-              {loading ? '--' : leads.length}
-            </p>
-          </div>
-          <div className="bg-white/10 rounded-xl p-3 text-center">
-            <p className="text-white/50 text-[9px] uppercase tracking-wider mb-1">At Risk</p>
-            <p className={`text-2xl font-bold ${atRisk.length > 0 ? 'text-red-400' : 'text-white'}`}>
-              {loading ? '--' : atRisk.length}
-            </p>
-          </div>
+      {/* ── Key metrics ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        <div className="bg-pnc-navy rounded-xl p-4">
+          <p className="text-white/50 text-[10px] uppercase tracking-wider mb-1">Clients</p>
+          <p className="text-white text-3xl font-bold">{loading ? '--' : smbs.length}</p>
+        </div>
+        <div className="bg-pnc-navy rounded-xl p-4">
+          <p className="text-white/50 text-[10px] uppercase tracking-wider mb-1">Pending Leads</p>
+          <p className={`text-3xl font-bold ${leads.length > 0 ? 'text-pnc-orange' : 'text-white'}`}>
+            {loading ? '--' : leads.length}
+          </p>
+        </div>
+        <div className="bg-pnc-navy rounded-xl p-4">
+          <p className="text-white/50 text-[10px] uppercase tracking-wider mb-1">At Risk</p>
+          <p className={`text-3xl font-bold ${atRisk.length > 0 ? 'text-red-400' : 'text-white'}`}>
+            {loading ? '--' : atRisk.length}
+          </p>
+        </div>
+        <div className="bg-pnc-navy rounded-xl p-4">
+          <p className="text-white/50 text-[10px] uppercase tracking-wider mb-1">Pipeline Value</p>
+          <p className="text-white text-3xl font-bold">
+            {loading ? '--' : fmt(leads.reduce((s, l) => s + (l.requested_amount || 0), 0), true)}
+          </p>
         </div>
       </div>
 
-      <div className="px-4 pt-4 space-y-5">
+      <div className="space-y-5">
 
         {/* ── Key Metrics ── */}
         <div>
           <SectionHeader title="Portfolio Overview" />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <MetricCard
               icon={DollarSign}
               label="Total Portfolio Revenue"
@@ -283,6 +287,10 @@ export default function BankerDashboard({ user }) {
             />
           </div>
         </div>
+
+        <div className="grid lg:grid-cols-2 gap-5">
+        {/* ── Left column ── */}
+        <div className="space-y-5">
 
         {/* ── Credit Pipeline ── */}
         <div>
@@ -387,6 +395,11 @@ export default function BankerDashboard({ user }) {
           )}
         </div>
 
+        </div>{/* end left column */}
+
+        {/* ── Right column ── */}
+        <div className="space-y-5">
+
         {/* ── Portfolio Health Breakdown ── */}
         <div>
           <SectionHeader title="Portfolio Health" action="All Clients" onAction={() => navigate('/banker/clients')} />
@@ -468,6 +481,9 @@ export default function BankerDashboard({ user }) {
             ))}
           </div>
         </div>
+
+        </div>{/* end right column */}
+        </div>{/* end grid */}
 
         {/* ── Clients Needing Attention ── */}
         {!loading && atRisk.length > 0 && (

@@ -8,6 +8,10 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': 'http://api:8000',
+      '/banker/stream': {
+        target: 'http://api:8000',
+        headers: { 'Connection': 'keep-alive' },
+      },
       '/banker': 'http://api:8000',
       '/smb': 'http://api:8000',
       '/health': 'http://api:8000',

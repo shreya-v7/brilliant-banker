@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 
 // SMB pages
 import Login from './pages/Login'
+import Marketing from './pages/Marketing'
 import Dashboard from './pages/Dashboard'
 import Chat from './pages/Chat'
 import Activity from './pages/Activity'
@@ -19,13 +20,18 @@ import BankerProfile from './pages/banker/BankerProfile'
 
 export default function App() {
   const [user, setUser] = useState(null)
+  const [showMarketing, setShowMarketing] = useState(false)
 
   const handleLogout = useCallback(() => {
     setUser(null)
   }, [])
 
+  if (showMarketing) {
+    return <Marketing onBack={() => setShowMarketing(false)} />
+  }
+
   if (!user) {
-    return <Login onLogin={setUser} />
+    return <Login onLogin={setUser} onShowMarketing={() => setShowMarketing(true)} />
   }
 
   // ── Banker shell ────────────────────────────────────────────────────────────

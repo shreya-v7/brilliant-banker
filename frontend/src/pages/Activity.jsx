@@ -10,6 +10,9 @@ import {
   MessageCircle,
   CreditCard,
   AlertCircle,
+  Ticket,
+  Mail,
+  User,
 } from 'lucide-react'
 
 const STATUS_CONFIG = {
@@ -19,7 +22,7 @@ const STATUS_CONFIG = {
     bg: 'bg-amber-50',
     border: 'border-amber-200',
     label: 'Pending Review',
-    description: 'Your banker is reviewing this request.',
+    description: 'Your RM is reviewing this request.',
   },
   approved: {
     icon: CheckCircle2,
@@ -43,7 +46,7 @@ const STATUS_CONFIG = {
     bg: 'bg-blue-50',
     border: 'border-blue-200',
     label: 'Under Review',
-    description: 'Your banker will call within 24 hours.',
+    description: 'Your RM will call within 24 hours.',
   },
 }
 
@@ -73,9 +76,14 @@ function EscalationCard({ esc }) {
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-pnc-gray-900 text-sm font-semibold">
-            {esc.requested_amount ? `${fmt(esc.requested_amount)} Credit Request` : 'Banker Escalation'}
+            {esc.requested_amount ? `${fmt(esc.requested_amount)} Credit Request` : 'RM Escalation'}
           </p>
-          <p className="text-pnc-gray-500 text-xs mt-0.5">{fmtDate(esc.created_at)}</p>
+          <div className="flex items-center gap-2 mt-0.5">
+            {esc.ticket_number && (
+              <span className="text-pnc-orange text-[10px] font-bold">{esc.ticket_number}</span>
+            )}
+            <p className="text-pnc-gray-500 text-xs">{fmtDate(esc.created_at)}</p>
+          </div>
         </div>
         <span className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full shrink-0 ${cfg.bg} ${cfg.color}`}>
           {cfg.label}
@@ -108,12 +116,37 @@ function EscalationCard({ esc }) {
             </div>
           </div>
 
-          {/* Banker notification */}
+          {/* Assigned RM */}
+          {esc.assigned_rm && (
+            <div className="bg-pnc-navy/5 border border-pnc-navy/10 rounded-xl p-3 space-y-2">
+              <p className="text-pnc-gray-500 text-[10px] uppercase tracking-wide font-medium">Your Relationship Manager</p>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-pnc-navy flex items-center justify-center shrink-0">
+                  <span className="text-white text-[10px] font-bold">
+                    {esc.assigned_rm.name.split(' ').map(n => n[0]).join('')}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-pnc-gray-900 text-xs font-semibold">{esc.assigned_rm.name}</p>
+                  <p className="text-pnc-gray-500 text-[10px]">{esc.assigned_rm.title}</p>
+                </div>
+              </div>
+              <a
+                href={`mailto:${esc.assigned_rm.email}`}
+                className="flex items-center gap-1.5 text-pnc-navy text-xs font-medium"
+              >
+                <Mail size={12} />
+                {esc.assigned_rm.email}
+              </a>
+            </div>
+          )}
+
+          {/* RM notification */}
           {esc.notification_text && (
             <div className={`${cfg.bg} border ${cfg.border} rounded-xl p-3`}>
               <div className="flex items-center gap-1.5 mb-1.5">
                 <MessageCircle size={13} className={cfg.color} />
-                <span className={`text-xs font-semibold ${cfg.color}`}>Message from your banker</span>
+                <span className={`text-xs font-semibold ${cfg.color}`}>Message from your RM</span>
               </div>
               <p className="text-pnc-gray-700 text-xs leading-relaxed">{esc.notification_text}</p>
             </div>
@@ -123,7 +156,7 @@ function EscalationCard({ esc }) {
           {esc.status === 'pending' && (
             <div className="bg-amber-50 border border-amber-100 rounded-xl p-3">
               <p className="text-amber-700 text-xs leading-relaxed">
-                Your request is in the priority queue. Bankers typically respond within 4 business hours.
+                Your request is in the priority queue. Your RM typically responds within 4 business hours.
               </p>
             </div>
           )}

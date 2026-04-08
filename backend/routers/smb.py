@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.db.postgres import SMB, Lead, LeadEvent, Transaction, get_session
-from backend.models.schemas import SMBProfile, TransactionOut, SMBLeadOut
+from backend.models.schemas import SMBProfile, TransactionOut, SMBLeadOut, RMContact
 from backend.services.claude_service import generate_ai_brief
 
 router = APIRouter(tags=["smb"])
@@ -109,8 +109,21 @@ async def get_smb_escalations(
             latest_event = sorted(lead.events, key=lambda e: e.created_at or 0, reverse=True)[0]
             latest_notification = latest_event.sms_sent
 
+        rm_contact = None
+        if lead.assigned_banker:
+            rm_contact = RMContact(
+                name=lead.assigned_banker.name,
+                title=lead.assigned_banker.title,
+                email=lead.assigned_banker.email,
+                region=lead.assigned_banker.region,
+            )
+
+        hex_part = str(lead.id).replace("-", "")[:6].upper()
+        ticket_number = f"TKT-{hex_part}"
+
         out.append(SMBLeadOut(
             id=lead.id,
+            ticket_number=ticket_number,
             status=lead.status,
             requested_amount=lead.requested_amount,
             credit_score=lead.credit_score,
@@ -118,5 +131,6 @@ async def get_smb_escalations(
             reason=lead.reason,
             created_at=lead.created_at,
             notification_text=latest_notification,
+            assigned_rm=rm_contact,
         ))
     return out
