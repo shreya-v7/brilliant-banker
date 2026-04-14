@@ -1,33 +1,33 @@
 # Brilliant Banker
 
-AI-powered banking assistant that serves **two users simultaneously**: SMB owners get an always-on financial advisor inside the PNC mobile app, and Relationship Managers get a CRM dashboard with AI-generated pre-call briefs, warm leads ranked by urgency, and one-tap credit decisions. Every interaction between an SMB and their bank makes the AI smarter about that business, the banker more prepared for the next call, and the SMB more confident about their finances.
+AI-powered banking assistant that serves **two users simultaneously**: SMB owners get an always-on financial advisor inside the PNC mobile app, and Relationship Managers get a CRM dashboard with AI-generated pre-call briefs, warm leads ranked by urgency, and one-tap credit decisions.
 
 ---
 
-## The Problem: Human Coverage Cannot Scale
+## The Problem
 
-PNC has **928K SMB client relationships** across 2,200 branches served by **596 bankers**. The math produces ~354 SMBs per branch manager — and only **35% get contacted in 2 years**. Hiring 1,000 more bankers still leaves 790K+ unserved. Three consequences emerge without intervention:
+PNC has **928K SMB client relationships** across 2,200 branches served by **596 bankers**. That's ~354 SMBs per branch manager — and only **35% get contacted in 2 years**. Hiring more bankers doesn't fix the math. Three consequences:
 
 - **$66K fraud undetected** — Carroll case, 4 months before discovery
-- **Credit denied blindly** — Fox (800+ score) waited 4 weeks with no proactive outreach
+- **Credit denied blindly** — Fox (800+ score) waited 4 weeks with no outreach
 - **Deposits leaving to Square** — Valentina, active customer, moving money to a competitor
 
-**AI is the only solution that scales insight to 796K clients simultaneously while alerting humans when action is needed.** Brilliant Banker is the in-app AI advisor + banker CRM that makes this possible — embedded in the PNC mobile app, human-in-the-loop for all transactions.
+**AI is the only solution that scales insight to 796K clients simultaneously while alerting humans when action is needed.**
 
 ---
 
-## System Architecture (5 Layers)
+## Production Architecture (Target)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │  Layer 1: Data Sources (PNC existing infrastructure)                    │
-│  Transactions | Accounts | Call transcripts | Industry codes            │
-│  Event hub | Agentic platform                                           │
-└──────────────────────────────────┬──────────────────────────────────────┘
-                                   │
-                                   ▼
+│  Transactions │ Accounts │ Call transcripts │ Industry codes            │
+│  Event hub │ Agentic platform                                           │
+└──────────────────────────────┬──────────────────────────────────────────┘
+                               │
+                               ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
-│  Layer 2: Intelligence Engine (what we build)                           │
+│  Layer 2: Intelligence Engine                                           │
 │                                                                         │
 │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐   │
 │  │ Seasonal ML  │ │ Cash flow    │ │ Credit       │ │ Anomaly      │   │
@@ -35,14 +35,14 @@ PNC has **928K SMB client relationships** across 2,200 branches served by **596 
 │  │              │ │              │ │ LogReg/GBM   │ │ Isol. forest │   │
 │  └──────────────┘ └──────────────┘ └──────────────┘ └──────────────┘   │
 │                                                                         │
-│  Peer benchmark (928K) | External signals (NOAA) | Feature store (Feast)│
-│  LLM message composer (Anthropic/OpenAI + PNC guardrails + compliance)  │
-└──────────────────────────────────┬──────────────────────────────────────┘
-                                   │
-                                   ▼
+│  Peer benchmark (928K) │ External signals (NOAA) │ Feature store (Feast)│
+│  LLM composer (Anthropic + PNC compliance guardrails)                   │
+└──────────────────────────────┬──────────────────────────────────────────┘
+                               │
+                               ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
 │  Layer 3: Decision + Routing Engine                                     │
-│  Priority ranking | Channel routing | Alert timing | Dual-side bridge   │
+│  Priority ranking │ Channel routing │ Alert timing │ Dual-side bridge   │
 └────────┬─────────────────────┬─────────────────────┬───────────────────┘
          │                     │                     │
          ▼                     ▼                     ▼
@@ -50,414 +50,316 @@ PNC has **928K SMB client relationships** across 2,200 branches served by **596 
 │ SMB: PNC App   │   │   Bridge     │   │ Banker: CRM        │
 │ Cash forecast  │   │ Alerts both  │   │ Pre-call brief     │
 │ Credit pre-qual│   │ sides at     │   │ Warm leads         │
-│ Product recs   │   │ once. Cold   │   │ Risk flags         │
-│ AI chat        │   │ to warm.     │   │ Multi-entity       │
-└───────┬────────┘   └──────────────┘   └───────┬────────────┘
-        │                                       │
-        ▼                                       ▼
-  SMB owner's phone                       Banker's laptop
-                    ┌─────────────────┐
-                    │ Layer 4: Auth   │
-                    │ Biometric | PII │
-                    │ Audit | TCPA    │
-                    └────────┬────────┘
-                             │
-                             ▼
-              ┌──────────────────────────────┐
-              │ Layer 5: Flywheel            │
-              │ Every interaction enriches   │
-              │ data layer. Response rates,  │
-              │ adoptions, call outcomes,    │  ──── loops back to Layer 1
-              │ seasonal corrections feed    │
-              │ back to improve all models.  │
-              └──────────────────────────────┘
+│ Product recs   │   │ once         │   │ Risk flags         │
+│ AI chat        │   │              │   │ Multi-entity       │
+└────────────────┘   └──────────────┘   └────────────────────┘
 
-Legend: Gray = PNC existing | Purple = ML we build | Coral = routing
-        Blue = delivery | Green = flywheel
+         ┌──────────────────────────────────────────┐
+         │  Layer 4: Security & Compliance           │
+         │  Biometric │ PII masking │ Audit logging  │
+         │  ECOA/TCPA compliance │ Explainable AI    │
+         └──────────────────────────────────────────┘
+
+         ┌──────────────────────────────────────────┐
+         │  Layer 5: Flywheel                        │
+         │  Every interaction enriches data layer.   │
+         │  Response rates, call outcomes, seasonal  │
+         │  corrections feed back to improve models. │  ← loops to Layer 1
+         └──────────────────────────────────────────┘
 ```
+
+### Production Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Data pipeline | Kafka event hub, batch+stream processing |
+| ML models | Prophet/STL (seasonal), XGBoost/LSTM (cash flow), LogReg/GBM (credit), Isolation forest (anomaly) |
+| Feature store | Feast/Tecton with Redis cache |
+| LLM | Anthropic Claude with PNC compliance guardrails |
+| Databases | PostgreSQL (relational), Redis (caching + pub/sub), MongoDB (conversations) |
+| Monitoring | Prometheus + Grafana |
+| Deployment | Kubernetes, CI/CD, blue-green deploys |
 
 ---
 
-## Implementation Roadmap (18 months, 4 phases)
+## What This Prototype Implements
 
-### Phase 1: Data Foundation (months 1–3) — Borrow from PNC
+This repo is a **working proof-of-concept** that demonstrates the full user experience with simplified infrastructure. The AI pipeline, UI, and business logic are production-representative — only the data layer is simplified for zero-config deployment.
+
+```
+React App → POST /api/chat → LangGraph Agent → Claude → Response
+                                │
+                                ├─ intent_classifier (Claude)
+                                ├─ tool_router → cash_flow / credit_prequal / faq / escalate
+                                ├─ reply_composer (Claude)
+                                └─ escalation_checker (auto-escalate >$10K)
+```
+
+### POC vs Production
+
+| Component | Production | This POC |
+|-----------|-----------|----------|
+| Relational data | PostgreSQL 16 | **SQLite** (file-based, auto-created) |
+| Session/cache | Redis 7 | **In-memory Python dict** |
+| Real-time events | Redis pub/sub / Kafka | **In-memory asyncio broadcast** |
+| Chat history | MongoDB 7 | **SQLite table** (same DB file) |
+| ML models | XGBoost, Prophet, Isolation Forest | **Rule-based** (stability × history × revenue) |
+| LLM | Claude with compliance guardrails | **Claude** (same, no guardrails) |
+| Auth | Biometric + OAuth | **Mock login** (pick a demo user) |
+| Deployment | Kubernetes cluster | **Single Railway service** |
+| Data | 928K real clients | **5 seeded demo SMBs** |
+
+**What's real:** The LangGraph 4-node AI pipeline, Claude integration, full SMB + Banker UIs, credit pre-qualification scoring, auto-escalation logic, real-time SSE event stream, and append-only decision audit trail.
+
+---
+
+## Implementation Roadmap (18 months)
+
+### Phase 1: Data Foundation (months 1–3)
 
 | Component | Details | Tech |
 |-----------|---------|------|
-| Transaction pipeline | Wire event hub into feature store. Rolling aggregates (7d, 30d, 90d, YoY) per client. | Kafka, batch+stream |
-| Seasonal decomposition | Decompose 3+ year histories into trend, seasonal, residual. Seasonality index per client. | Prophet/STL, 928K clients |
-| Feature store | Centralized registry: seasonality index, cash runway, peer percentile, product gaps per client. | Feast/Tecton, Redis cache |
+| Transaction pipeline | Wire event hub into feature store. Rolling aggregates (7d, 30d, 90d, YoY). | Kafka, batch+stream |
+| Seasonal decomposition | Decompose 3+ year histories into trend, seasonal, residual. | Prophet/STL, 928K clients |
+| Feature store | Centralized registry: seasonality index, cash runway, peer percentile. | Feast/Tecton, Redis cache |
 
-### Phase 2: Cash Flow MVP (months 3–6) — First client-facing value
+### Phase 2: Cash Flow MVP (months 3–6)
 
 | Component | Details | Tech |
 |-----------|---------|------|
 | 90-day forecaster | Forward projection with confidence bands. Best/middle/worst scenarios. | XGBoost, daily retrain |
-| In-app AI chat | Embedded in PNC mobile app. Conversational interface for forecasts, Q&A, product info. | LLM API, PNC SDK |
-| Banker CRM v1 | Pre-call brief for pilot bankers. Client health, seasonal flags, conversation prompts. | React, REST API |
-| Pilot: 1,000 SMBs | Seasonal businesses first. Target: 20% MAPE, 3+ bankers daily. Shadow mode 90 days first. | Fox, Valentina, Kayla |
+| In-app AI chat | Embedded in PNC mobile app. Conversational interface for forecasts. | LLM API, PNC SDK |
+| Banker CRM v1 | Pre-call brief for pilot bankers. Client health, seasonal flags. | React, REST API |
+| Pilot: 1,000 SMBs | Seasonal businesses first. Target: 20% MAPE. Shadow mode 90 days. | Fox, Valentina, Kayla |
 
-### Phase 3: Full Intelligence (months 6–12) — Requires compliance approval
+### Phase 3: Full Intelligence (months 6–12)
 
 | Component | Details | Tech |
 |-----------|---------|------|
-| Credit pre-qual | Transaction-based scoring. Approval probability + amount range. Explainable model for ECOA. | Logistic reg, OCC review |
-| Product discovery | Contextual recommendations triggered by account activity. Surfaces PNC's 18%-awareness products. | Rec engine, A/B test |
-| Anomaly detection | Real-time fraud and unusual vendor alerts. Prevents Carroll $66K scenario. Sub-minute latency. | Isolation forest, Flink |
-| Bridge alerts | Dual notification: owner (in-app push) + banker (CRM update) simultaneously on actionable events. | Event router, Push API |
+| Credit pre-qual | Transaction-based scoring. Explainable model for ECOA. | Logistic reg, OCC review |
+| Anomaly detection | Real-time fraud alerts. Prevents Carroll $66K scenario. | Isolation forest, Flink |
+| Bridge alerts | Dual notification: owner + banker simultaneously. | Event router, Push API |
 
-### Phase 4: Scale to ~796K (months 12–18) — Flywheel compounds
+### Phase 4: Scale to ~796K (months 12–18)
 
 | Component | Details |
 |-----------|---------|
-| Full portfolio rollout | From 1K pilot to 796K. Regional: Midwest first (273K, 156 bankers), then NE, SE, SW. |
-| Feedback loop tuning | Send-time optimization. Seasonal correction after first full cycle. Playbook quality scoring. |
-| Success metrics | NPS lift from 4. Product penetration 81%→85%. Lending 9%→15%+. Contact rate 35%→65%+. |
+| Full rollout | From 1K pilot to 796K. Regional: Midwest first, then NE, SE, SW. |
+| Flywheel | Send-time optimization. Seasonal correction. Playbook quality scoring. |
+| Success metrics | NPS lift. Product penetration 81%→85%. Lending 9%→15%+. Contact rate 35%→65%+. |
 
-### Investment & Risk Summary
+### Investment & Risk
 
 | Category | Requirement | Mitigation |
 |----------|-------------|------------|
-| Team | 7–10 hires: 3-5 ML, 1-2 conversational AI, 1-2 streaming, 1 UX | Small vs Chase $18B. Focused team. |
-| Infra | Feature store, streaming layer, LLM API, PNC app SDK | PNC has 5/6 building blocks. Incremental. |
-| Accuracy | Forecast must be under 20% MAPE before going live | BofA CashPro proves approach. 90-day shadow mode. |
-| Regulatory | Credit pre-qual framing under ECOA / OCC AI guidance | Explainable models. "Informational" framing. |
-| Addressable | ~796K × $6,765 = ~$5.4B within PNC existing base | 5% adoption lift = ~$269M. Aligns with 2030 targets. |
-
-> Key change from prior version: chat interface is now embedded in PNC mobile app, not SMS. Transactions confirmed via biometric within the same app session. Push notifications replace SMS for proactive alerts.
+| Team | 7–10 hires: 3-5 ML, 1-2 conversational AI, 1 UX | Small vs Chase $18B. Focused team. |
+| Accuracy | Forecast must be under 20% MAPE | BofA CashPro proves approach. 90-day shadow mode. |
+| Regulatory | Credit pre-qual under ECOA / OCC AI guidance | Explainable models. "Informational" framing. |
+| Addressable | ~796K × $6,765 = ~$5.4B within PNC base | 5% adoption lift = ~$269M. |
 
 ---
 
-## Prototype Architecture (what this repo implements)
+## Pricing & Revenue Model
 
-```
-React Mobile App → POST /api/chat → LangGraph Agent → Claude → JSON response
-                                      │
-                                      ├─ intent_classifier (Claude)
-                                      ├─ tool_router → cash_flow / credit_prequal / faq / escalate
-                                      ├─ reply_composer (Claude)
-                                      └─ escalation_checker (auto-escalate >$10K)
-```
+### SMB Pricing — Designed for Small Business Affordability
 
-**Frontend:** React 18 + Vite 6 + Tailwind CSS 3 — mobile-first UI with PNC brand colors (navy #002D5F + orange #E35205)
+The AI advisor is bundled into PNC business accounts at tiers that make sense relative to what SMBs already pay for banking. No separate software purchase — it's a banking feature, not a SaaS product.
 
-**Data stores:**
-- **PostgreSQL 16** — SMB profiles, leads, lead decision events, transactions, bankers, notes
-- **Redis 7** — Phone-to-SMB session mapping + pub/sub for real-time RM event stream
-- **MongoDB 7** — Conversation history (multi-turn chat context)
+| Tier | Who | Monthly Cost | What They Get |
+|------|-----|-------------|---------------|
+| **Starter** (free) | All 928K PNC business checking customers | $0 | AI chat (5 msgs/day), basic cash flow snapshot, FAQ support, branch hours/rates lookup |
+| **Insights** | SMBs with $10K+ avg monthly balance | $29/mo | Unlimited AI chat, 90-day cash flow forecast, credit pre-qualification check, spending category breakdown, peer benchmarking |
+| **Advisor** | SMBs with $50K+ avg monthly balance or existing credit | $79/mo | Everything in Insights + dedicated RM priority queue, proactive anomaly alerts, seasonal business planning, product recommendations, AI-drafted quarterly business review |
+
+**Why this works for SMBs:**
+- **Free tier creates trust.** 928K clients can try the AI advisor at zero risk. The chat alone saves a phone call to the branch (avg $12/call for PNC, avg 15 min wait for client). Both sides win.
+- **$29/mo is cheaper than a bookkeeper.** A fractional bookkeeper costs $200-500/mo. For $29, an SMB gets real-time cash forecasting and credit readiness — the two things they'd actually call their accountant about.
+- **$79/mo replaces a financial advisor call.** Small business financial advisory starts at $150-300/hr. The Advisor tier provides always-on monitoring that a quarterly advisor meeting never could.
+- **Balance requirements align incentives.** Higher tiers require keeping money at PNC — deeper deposits fund PNC's lending, and the SMB gets smarter tools in return.
+
+### What the SMB Gets Back (ROI)
+
+| Scenario | Without Brilliant Banker | With Brilliant Banker | SMB Savings |
+|----------|------------------------|----------------------|-------------|
+| Cash flow surprise | Overdraft fees avg $35/incident, 3x/year = $105 | AI warns 7 days ahead, zero overdrafts | **$105/year saved** |
+| Credit application | 4-week wait, manual paperwork, maybe declined | Pre-qual in 10 seconds, knows eligibility before applying | **Hours saved, no wasted applications** |
+| Fraud/anomaly | Carroll: $66K lost over 4 months | AI flags unusual vendor in <24 hours | **Potentially thousands saved** |
+| Banker relationship | 35% chance of contact in 2 years | Automatic priority routing, RM calls when it matters | **Actually has a relationship manager** |
+| Tax season prep | $500+ bookkeeper bill for transaction categorization | Auto-categorized spending, exportable reports | **$200-400/year saved** |
+
+> A Starter-tier SMB saves more in avoided overdraft fees than the cost of upgrading to Insights.
+
+### PNC Revenue Streams
+
+| Stream | Year 1 (Pilot) | Year 3 (Scale) | How |
+|--------|---------------|-----------------|-----|
+| **Subscription revenue** | $1.2M | $48M | 5% of 928K upgrade to Insights ($29) + 1% to Advisor ($79) |
+| **Deposit deepening** | $8M | $180M | Balance requirements pull deposits from Square/Stripe back to PNC. $50K avg balance × interest margin. |
+| **Lending conversion** | $12M | $340M | Credit pre-qual surfaces qualified borrowers the bank currently misses. 9%→15% lending penetration on $5.4B addressable. |
+| **Reduced attrition** | $3M | $65M | 1% reduction in SMB churn = ~9,280 retained clients × $6,765 avg revenue. AI engagement creates switching cost. |
+| **Operational savings** | $2M | $25M | 35% reduction in branch call volume for routine questions. Each AI chat replaces a $12 branch interaction. |
+| **Cross-sell uplift** | $1M | $40M | Product awareness is 18% today. AI surfaces relevant products (merchant services, payroll, insurance) in context. |
+| **Total** | **~$27M** | **~$698M** | Conservative: assumes only PNC existing base, no new acquisition. |
+
+### PNC Technology Cost to Build & Run
+
+| Category | Year 1 | Year 2 | Year 3 (steady state) | Notes |
+|----------|--------|--------|----------------------|-------|
+| **Team** | $2.4M | $2.8M | $3.0M | 7-10 engineers: 3-5 ML, 1-2 conversational AI, 1 streaming, 1 UX. Avg $280K fully loaded. |
+| **LLM API (Claude)** | $180K | $420K | $800K | ~$0.03/conversation × volume. Scales with adoption. Negotiable at enterprise volume. |
+| **Cloud infra** | $240K | $360K | $480K | Kubernetes, PostgreSQL, Redis, Kafka, feature store. Mostly incremental on PNC's existing 5/6 building blocks. |
+| **ML training & compute** | $120K | $200K | $250K | Daily model retraining (XGBoost, Prophet). GPU for LSTM. Feature store maintenance. |
+| **Compliance & audit** | $150K | $100K | $80K | ECOA review, OCC AI guidance alignment, explainability testing. Front-loaded in Year 1. |
+| **Third-party data** | $60K | $80K | $100K | NOAA (weather/seasonal), industry benchmarks, external signals for anomaly detection. |
+| **Total** | **$3.15M** | **$3.96M** | **$4.71M** | |
+| **Revenue** | $27M | $180M | $698M | |
+| **ROI** | **8.6x** | **45x** | **148x** | |
+
+> **Payback period: ~6 months** from Phase 2 launch (month 6). Subscription + lending conversion alone cover the full tech cost by month 9.
+
+### Why This Pricing Beats Competitors
+
+| Competitor | What they charge SMBs | What Brilliant Banker does better |
+|-----------|----------------------|----------------------------------|
+| QuickBooks Cash Flow | $30/mo (standalone tool) | Embedded in banking — no separate login, real transaction data, not manual entry |
+| Nav.ai (credit monitoring) | $20-40/mo | PNC has the actual underwriting data. Pre-qual here means something. |
+| Mercury AI | Free (but requires switching banks) | No switching cost. Works inside PNC where the money already is. |
+| Brex AI | Enterprise only ($0 for startups, $12/user otherwise) | Available to all 928K SMBs, not just tech startups. Includes human banker bridge. |
+| Standalone financial advisor | $150-300/hr | Always-on, $0-79/mo, learns from every interaction. 24/7 availability. |
+
+---
 
 ## App Screens
 
-### SMB Owner (mobile app)
+### SMB Owner (mobile)
 
-| Screen | Description |
+| Screen | What it does |
 |--------|-------------|
 | **Login** | Role picker (Business Owner vs PNC Banker), then profile selector |
-| **Dashboard** | Checking/savings balances, 30-day cash flow summary, quick actions, recent transactions, AI assistant card |
-| **Chat** | Full chatbot with message bubbles, typing indicator, intent badges, suggested prompts, RM contact card on escalation |
-| **Activity** | Track all credit requests — filter by status, expand for details, see RM notifications |
-| **Profile** | Business details, financial stats, on-demand AI business brief, logout |
+| **Dashboard** | Balances, 30-day cash flow, recent transactions, AI assistant card |
+| **Chat** | AI chatbot with typing indicator, intent badges, suggested prompts, RM card on escalation |
+| **Activity** | Track credit requests — filter by status, expand for details, see RM notifications |
+| **Profile** | Business details, financial stats, AI business brief |
 
-### Banker / RM (desktop portal)
+### Banker / RM (desktop)
 
-| Screen | Description |
+| Screen | What it does |
 |--------|-------------|
-| **Dashboard** | Key metrics, portfolio overview, credit pipeline bar, priority queue, portfolio health donut, at-risk clients, payment history, quick actions |
-| **My Clients** | All SMBs sorted by stability, tap to drill into full profile |
-| **Credit Review** | Pending leads with AI pre-call brief, conversation playbook, approve/decline/refer with Claude-drafted notifications |
-| **Client Profile** | 4-tab view: Overview (stats + AI brief), Transactions (30-day summary + list), Credit History, Banker Notes |
-| **Profile** | Banker info + logout |
+| **Dashboard** | Portfolio metrics, credit pipeline, priority queue, health donut, at-risk clients |
+| **My Clients** | All SMBs sorted by stability, drill into full profile |
+| **Credit Review** | Pending leads with AI pre-call brief, conversation playbook, approve/decline/refer |
+| **Client Profile** | 4-tab view: Overview, Transactions, Credit History, Banker Notes |
 
-## Setup (local)
+---
 
-### 1. Clone and configure
+## Setup (local dev)
 
 ```bash
+# 1. Clone and configure
 cp .env.example .env
-# Edit .env — set at minimum:
-#   ANTHROPIC_API_KEY   — required for all Claude calls
+# Edit .env — add your ANTHROPIC_API_KEY
+
+# 2. Start backend
+cd backend
+pip install -r requirements.txt
+cd ..
+uvicorn backend.main:app --reload --port 8000
+
+# 3. Start frontend (separate terminal)
+cd frontend
+npm install
+npm run dev
 ```
 
-### 2. Start everything
-
-```bash
-docker compose up --build
-```
-
-This starts PostgreSQL, Redis, MongoDB, the FastAPI backend (port 8000), and the React frontend (port 5173). **Demo data is auto-seeded on first startup** — no manual seed step needed.
-
-### 3. Open the app
-
-Visit **http://localhost:5173** — select any demo user to start.
-
-> Manual re-seed (if needed): `docker compose exec api python -m backend.seed.seed_data`
-
-## Demo Users
-
-| Name               | Business       | Revenue | Cash Stability | UUID |
-|--------------------|----------------|---------|----------------|------|
-| Anne Fox           | Floral design  | $1.2M   | 72%            | `11111111-1111-1111-1111-111111111111` |
-| Justin Strong      | Dry cleaning   | $532K   | 61%            | `22222222-2222-2222-2222-222222222222` |
-| Melissa Murphy     | Restaurant     | $680K   | 45%            | `33333333-3333-3333-3333-333333333333` |
-| Valentina Cruz     | Bike tourism   | $490K   | 38%            | `44444444-4444-4444-4444-444444444444` |
-| Richard Watterson  | Bookkeeping    | $85K    | 91%            | `55555555-5555-5555-5555-555555555555` |
-
-## API Endpoints
-
-### Chat (used by frontend)
-
-```bash
-# Send a message
-curl -X POST http://localhost:8000/api/chat \
-  -H "Content-Type: application/json" \
-  -d '{"smb_id": "11111111-1111-1111-1111-111111111111", "message": "What does my cash flow look like?"}'
-
-# Get chat history
-curl http://localhost:8000/api/chat/11111111-1111-1111-1111-111111111111/history
-
-# List demo users
-curl http://localhost:8000/api/auth/users
-```
-
-### Banker API
-
-```bash
-# List leads
-curl http://localhost:8000/banker/leads
-curl "http://localhost:8000/banker/leads?status=pending"
-
-# Approve a lead
-curl -X POST http://localhost:8000/banker/leads/<lead-id>/decision \
-  -H "Content-Type: application/json" \
-  -d '{"action": "approved", "amount": 50000, "banker_note": "Strong profile"}'
-```
-
-### SMB Profile (with AI brief)
-
-```bash
-curl http://localhost:8000/smb/11111111-1111-1111-1111-111111111111/profile
-```
-
-## Example Chat Conversations
-
-### Cash flow query
-> **You:** What's my cash flow forecast?
-> **Bot:** Based on your average monthly revenue of $98,000 and cash stability of 0.72, your projected 30-day net is $24,640 with low risk.
-
-### Credit pre-qualification
-> **You:** Can I get a $25K credit line?
-> **Bot:** Based on your profile, you pre-qualify for up to $79,380 with a 0.73 approval probability. A banker will follow up since this is over $10K.
-
-### FAQ
-> **You:** What are your branch hours?
-> **Bot:** Our branches are open Monday-Friday 9AM-5PM and Saturday 9AM-1PM. You can also bank 24/7 through our app.
-
-### Escalation
-> **You:** I need to talk to someone about my account
-> **Bot:** I've connected you with a banker who will reach out shortly.
-
-## Project Structure
-
-```
-brilliant-banker/
-├── docker-compose.yml          # 5 services: Postgres, Redis, Mongo, API, Frontend
-├── Dockerfile                  # Backend (Python 3.12 + FastAPI)
-├── .env.example                # Required: ANTHROPIC_API_KEY
-├── ARCHITECTURE.md             # Full technical deep-dive + HuggingFace dataset roadmap
-├── docs/
-│   ├── system-architecture.png
-│   └── implementation-detail.png
-├── frontend/
-│   ├── Dockerfile              # Vite dev server
-│   ├── package.json
-│   ├── vite.config.js          # Proxy /api, /banker, /smb → backend:8000
-│   ├── tailwind.config.js      # PNC brand colors
-│   ├── index.html
-│   ├── public/
-│   │   ├── pnc-icon.svg
-│   │   └── rm-dashboard.html   # Standalone full-screen RM dashboard
-│   └── src/
-│       ├── main.jsx
-│       ├── App.jsx             # Role-based routing (SMB vs Banker)
-│       ├── api.js              # All fetch calls + SSE stream
-│       ├── index.css
-│       ├── components/
-│       │   ├── Layout.jsx          # SMB app shell + header
-│       │   ├── BottomNav.jsx       # SMB tab navigation
-│       │   ├── BankerLayout.jsx    # Banker app shell
-│       │   ├── BankerBottomNav.jsx # Banker tab navigation
-│       │   ├── DemoGuide.jsx       # Step-by-step walkthrough overlay
-│       │   └── RMStreamFeed.jsx    # Real-time SSE activity feed
-│       └── pages/
-│           ├── Login.jsx           # Role picker + profile selector
-│           ├── Marketing.jsx       # Product marketing page
-│           ├── Dashboard.jsx       # SMB home: balances, cash flow, transactions
-│           ├── Chat.jsx            # AI chatbot with intent badges
-│           ├── Activity.jsx        # SMB credit request tracker
-│           ├── Profile.jsx         # SMB business profile + AI brief
-│           └── banker/
-│               ├── BankerDashboard.jsx   # Portfolio metrics, pipeline, priority queue
-│               ├── BankerClients.jsx     # Client list sorted by risk
-│               ├── BankerCreditReview.jsx # AI brief + playbook + decisions
-│               ├── BankerSMBProfile.jsx  # 4-tab client deep-dive
-│               └── BankerProfile.jsx     # Banker info + logout
-└── backend/
-    ├── main.py                 # FastAPI app + CORS + lifespan
-    ├── requirements.txt
-    ├── agent/
-    │   ├── graph.py            # LangGraph 4-node pipeline (compiled StateGraph)
-    │   ├── tools.py            # cash_flow, credit_prequal, faq, escalate
-    │   └── prompts.py          # All system/user/RM prompts
-    ├── services/
-    │   ├── claude_service.py   # Anthropic Claude wrapper (Sonnet 4.6)
-    │   ├── notify_service.py   # Claude-drafted decision notifications
-    │   └── stream_service.py   # Redis pub/sub for real-time RM event stream
-    ├── db/
-    │   ├── postgres.py         # SQLAlchemy async models (6 tables)
-    │   ├── redis_client.py     # Session mapping + pub/sub
-    │   └── mongo_client.py     # Conversation history CRUD
-    ├── models/
-    │   └── schemas.py          # Pydantic models + settings
-    ├── routers/
-    │   ├── chat.py             # POST /api/chat + auth endpoints
-    │   ├── banker.py           # Portfolio, leads, decisions, notes
-    │   ├── smb.py              # SMB profile + transactions + escalations
-    │   └── stream.py           # GET /banker/stream (SSE endpoint)
-    └── seed/
-        └── seed_data.py        # 5 SMBs, 3 bankers, transactions, leads, notes
-```
-
-## Demo Walkthrough
-
-### 1. Log in as a Banker
-
-On the login screen, tap the **PNC Banker** tab (not Business Owner). Select one of the demo bankers:
-
-| Name | Title |
-|------|-------|
-| Sarah Chen | Senior Business Banking Advisor |
-| Marcus Williams | SMB Relationship Manager |
-| Jordan Patel | Business Credit Specialist |
-
----
-
-### 2. Banker Dashboard (mobile app)
-
-You land on the Banker Dashboard inside the mobile shell. This shows:
-- **Hero strip** — client count, pending decisions, at-risk count
-- **Portfolio Overview** — 4 metric cards (revenue, monthly avg, credit requested, approved)
-- **Credit Pipeline** — status bar + recent decisions
-- **Priority Queue** — pending leads ranked by urgency
-- **Portfolio Health** — donut chart + per-client stability bars
-- **Top Clients by Revenue**, **Needs Attention**, **Payment History**, **Quick Actions**
-
----
-
-### 3. RM Command Center (full-screen dashboard)
-
-Open a new tab and go to:
-
-```
-http://localhost:5173/rm-dashboard.html
-```
-
-Key things to point out:
-- **SMB Revenue Timeline** — hover over any point to see each client's daily revenue. Five colored lines, one per SMB.
-- **Client Portfolio table** — sorted by risk (lowest stability first). Red stability bars signal who needs a call.
-- **Credit Pipeline** — full funnel from pending → approved/referred/declined with amounts.
-- **Activity Feed** — surfaces pending decisions, completed decisions, and at-risk alerts in one place.
-
----
-
-### 4. Review a Credit Request
-
-Back in the mobile app, tap **Credit Review** (bottom nav or Quick Actions). Expand a pending lead:
-
-1. Read the **AI Pre-call Brief** — a 30-second summary of the client's financial health
-2. Review the **Conversation Playbook** — talking points for the call
-3. Set an **approved amount** (pre-filled from the request)
-4. Tap **Approve**, **Decline**, or **Refer**
-
-The decision updates immediately and Claude drafts a plain-language notification for the SMB.
-
----
-
-### 5. Explore a Client Profile
-
-Tap **My Clients** → select any client (e.g. Melissa Murphy). The 4-tab profile shows:
-
-| Tab | Content |
-|-----|---------|
-| **Overview** | Stats grid, AI brief (tap Generate), cash stability ring |
-| **Transactions** | 30-day summary (income/expense/net) + full transaction list |
-| **Credit History** | All past loan requests with status |
-| **Notes** | Pre-seeded banker notes + add your own |
-
----
-
-### 6. Guided Demo Mode
-
-Tap the floating **Demo** button (bottom-right of any screen) to open the step-by-step guide. It walks through the full end-to-end story with navigation shortcuts and prompt chips that auto-inject messages into the SMB chat.
-
----
-
-### Full End-to-End Story
-
-1. **SMB side** — Melissa Murphy (restaurant owner) opens chat and asks for a $35K credit line
-2. **AI escalates** — LangGraph detects the amount > $10K, runs pre-qual, creates a lead with urgency 0.85
-3. **RM gets notified** — Melissa appears at #1 in the Priority Queue with a "High" urgency badge
-4. **RM reviews** — Opens credit review, generates the AI brief, reviews the conversation playbook
-5. **RM decides** — Approves with an amount; Claude drafts the approval notification
-6. **SMB sees result** — Melissa's Activity tab shows "approved" with the notification text
+Visit **http://localhost:5173**. Demo data auto-seeds on first startup.
 
 ---
 
 ## Deploy to Railway
 
-The app deploys as a **single Railway service** with **zero database setup** — it uses SQLite (file-based) for all data, Redis is replaced with in-memory pub/sub, and MongoDB is replaced with a SQLite table. The only environment variable you need is your Anthropic API key.
+Single service, zero database setup — just one env var.
 
-### Step 1: Deploy the app
-
-1. Go to [railway.app](https://railway.app) and create a new project
-2. Click **"+ New"** → **"GitHub Repo"**
-3. Select your `brilliant-banker` repo
-4. Railway detects `railway.json` and uses `Dockerfile.railway` automatically
-
-### Step 2: Set environment variable
-
-Click on the deployed service → **Variables** tab. Add:
-
-```
-ANTHROPIC_API_KEY=sk-ant-...
-```
-
-That's it. No databases to provision.
-
-### Step 3: Generate a public URL
-
-Click on your app service → **Settings** → **Networking** → **Generate Domain**. Railway gives you an `https://*.up.railway.app` URL.
-
-### Step 4: Verify
-
-Visit your Railway URL. The app auto-seeds demo data on first boot (takes ~15s). You should see the login screen.
+1. Go to [railway.app](https://railway.app) → create project → **"+ New"** → **"GitHub Repo"** → select this repo
+2. Railway detects `railway.json` and builds automatically
+3. Go to **Variables** tab → add `ANTHROPIC_API_KEY`
+4. Go to **Settings** → generate a public domain
+5. Visit your `https://*.up.railway.app` URL — auto-seeds demo data on first boot
 
 **Cost:** Railway free tier + ~$0.02-0.05 per conversation in Anthropic API calls.
 
-### UserTesting notes
+---
 
-- Testers need the live Railway `https://` URL — they cannot run Docker locally.
-- The login screen includes guidance telling testers to start with "Business Owner" first.
-- The floating **Demo** button on every screen opens a step-by-step walkthrough.
-- Budget ~$5-10 in API costs for a 50-tester study.
+## Demo Walkthrough
+
+### End-to-End Story
+
+1. **SMB side** — Log in as Melissa Murphy (restaurant owner), open Chat, ask for a $35K credit line
+2. **AI escalates** — LangGraph detects amount > $10K, runs pre-qual, creates lead with urgency 0.85
+3. **Banker side** — Log in as Sarah Chen, see Melissa at #1 in Priority Queue
+4. **Review** — Open Credit Review, read AI brief, review playbook
+5. **Decide** — Approve with amount; Claude drafts approval notification
+6. **SMB sees result** — Melissa's Activity tab shows "approved" with notification text
+
+Tap the floating **Demo** button on any screen for a guided step-by-step walkthrough.
+
+---
+
+## Project Structure
+
+```
+brilliant-banker/
+├── Dockerfile.railway         # Production build (frontend + backend in one image)
+├── railway.json               # Railway deployment config
+├── .env.example               # Just needs ANTHROPIC_API_KEY
+├── frontend/
+│   ├── package.json
+│   ├── vite.config.js         # Dev proxy → localhost:8000
+│   ├── tailwind.config.js     # PNC brand colors (navy + orange)
+│   └── src/
+│       ├── App.jsx            # Role-based routing (SMB vs Banker)
+│       ├── api.js             # All API calls + SSE stream
+│       ├── components/        # Layout shells, nav bars, demo guide, SSE feed
+│       └── pages/
+│           ├── Login.jsx      # Role picker + profile selector
+│           ├── Dashboard.jsx  # SMB home
+│           ├── Chat.jsx       # AI chatbot
+│           ├── Activity.jsx   # Credit request tracker
+│           ├── Profile.jsx    # Business profile + AI brief
+│           └── banker/        # 5 banker screens (dashboard, clients, credit, profile, SMB detail)
+└── backend/
+    ├── main.py                # FastAPI app, lifespan, static file serving
+    ├── requirements.txt       # 12 dependencies
+    ├── agent/
+    │   ├── graph.py           # LangGraph 4-node pipeline
+    │   ├── tools.py           # cash_flow, credit_prequal, faq, escalate
+    │   └── prompts.py         # All Claude prompts
+    ├── services/
+    │   ├── claude_service.py  # Anthropic Claude wrapper
+    │   ├── notify_service.py  # Decision notification drafting
+    │   └── stream_service.py  # In-memory pub/sub for SSE
+    ├── db/
+    │   ├── database.py        # SQLAlchemy models + SQLite engine (7 tables)
+    │   ├── conversations.py   # Chat history (SQLite)
+    │   └── phone_map.py       # In-memory session mapping
+    ├── models/
+    │   └── schemas.py         # Pydantic models + Settings
+    ├── routers/
+    │   ├── chat.py            # POST /api/chat + auth endpoints
+    │   ├── banker.py          # Portfolio, leads, decisions, notes
+    │   ├── smb.py             # SMB profile + transactions + escalations
+    │   └── stream.py          # GET /banker/stream (SSE)
+    └── seed/
+        └── seed_data.py       # 5 SMBs, 3 bankers, 80+ transactions, leads, notes
+```
 
 ---
 
 ## Design Decisions
 
-- **PNC brand theme**: Navy (#002D5F) and orange (#E35205) throughout, mobile-first responsive layout
-- **Append-only decisions**: `lead_events` table stores each banker action; `leads` row is never updated
+- **PNC brand theme**: Navy (#002D5F) and orange (#E35205), mobile-first responsive layout
+- **Append-only audit trail**: `lead_events` table records every banker action
 - **All AI responses via Claude**: Chat replies, decision notifications, business briefs — no hardcoded strings
 - **Auto-escalation**: Credit requests over $10K automatically create a banker lead
-- **Multi-turn context**: Last 10 messages from SQLite provide conversational continuity
-- **Zero-config deployment**: SQLite for all data, in-memory pub/sub — no external databases needed
-- **Real-time RM stream**: In-memory asyncio broadcast powers SSE events so bankers see live client activity
+- **Multi-turn context**: Last 10 messages provide conversational continuity
+- **Zero-config deployment**: SQLite + in-memory stores — no external databases needed for POC
+- **Real-time RM stream**: In-memory asyncio broadcast powers SSE so bankers see live client activity
