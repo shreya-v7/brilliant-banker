@@ -13,6 +13,7 @@ from backend.agent.graph import run_agent
 from backend.db.mongo_client import get_history, save_message
 from backend.db.postgres import SMB, Banker, get_session, async_session
 from backend.models.schemas import BankerOut, BankerLoginRequest, RMContact
+from backend.observability.metrics import CHAT_MESSAGES, ESCALATIONS
 from backend.services.claude_service import generate_rm_highlight
 from backend.services.stream_service import publish_event, chat_highlight_event, escalation_event
 
@@ -159,6 +160,10 @@ async def chat(body: ChatRequest):
     escalated = result.get("escalated", False)
     tool_result = result.get("tool_result", {})
     escalation_result = result.get("escalation_result", {})
+
+    CHAT_MESSAGES.labels(intent=intent or "unknown").inc()
+    if escalated:
+        ESCALATIONS.inc()
 
     # For auto-escalations, merge the escalation result into tool_result for stream
     esc_source = tool_result if tool_result.get("ticket_number") else escalation_result

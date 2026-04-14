@@ -1,13 +1,19 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from collections import defaultdict
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import FileResponse
+
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from backend.db.mongo_client import close_mongo
 from backend.db.postgres import init_db
@@ -97,10 +103,24 @@ async def _auto_seed_if_empty():
         logger.warning("Auto-seed skipped: %s", e)
 
 
+async def _init_with_retry(max_retries: int = 5, delay: float = 3.0):
+    """Retry database init — Railway databases may take a few seconds to accept connections."""
+    for attempt in range(1, max_retries + 1):
+        try:
+            await init_db()
+            logger.info("Database initialized (attempt %d)", attempt)
+            return
+        except Exception as e:
+            if attempt == max_retries:
+                raise
+            logger.warning("DB connection attempt %d/%d failed: %s — retrying in %.0fs", attempt, max_retries, e, delay)
+            await asyncio.sleep(delay)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting up — initializing database tables")
-    await init_db()
+    await _init_with_retry()
     await _auto_seed_if_empty()
     yield
     await close_mongo()
@@ -139,7 +159,29 @@ app.include_router(banker.router)
 app.include_router(smb.router)
 app.include_router(stream.router)
 
+Instrumentator(
+    should_group_status_codes=True,
+    should_ignore_untemplated=True,
+    excluded_handlers=["/health", "/metrics"],
+).instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
+
 
 @app.get("/health", tags=["health"])
 async def health():
     return {"status": "ok"}
+
+
+# ── Serve built React frontend (production only) ────────────────────────────
+
+_FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend_dist"
+
+if _FRONTEND_DIR.is_dir():
+    logger.info("Serving frontend from %s", _FRONTEND_DIR)
+    app.mount("/assets", StaticFiles(directory=_FRONTEND_DIR / "assets"), name="assets")
+
+    @app.get("/{path:path}", include_in_schema=False)
+    async def serve_spa(path: str):
+        file = _FRONTEND_DIR / path
+        if file.is_file():
+            return FileResponse(file)
+        return FileResponse(_FRONTEND_DIR / "index.html")

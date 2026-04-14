@@ -412,107 +412,56 @@ Tap the floating **Demo** button (bottom-right of any screen) to open the step-b
 
 ---
 
-## Hosting for UserTesting
+## Deploy to Railway
 
-UserTesting.com requires a publicly accessible `https://` URL — testers cannot run Docker locally. Here are the recommended hosting paths, cheapest first.
+The app deploys as a **single Railway service** — the production Dockerfile builds the React frontend into static files and serves everything from FastAPI. No proxy configuration needed.
 
-### Option A: Railway (recommended — easiest)
+### Step 1: Create databases on Railway
 
-Railway natively supports multi-service Docker Compose deployments.
+1. Go to [railway.app](https://railway.app) and create a new project
+2. Click **"+ New"** → **"Database"** → add **PostgreSQL**
+3. Click **"+ New"** → **"Database"** → add **Redis**
+4. For MongoDB, go to [mongodb.com/atlas](https://www.mongodb.com/atlas), create a free cluster, and get the connection string
 
-**Steps:**
+### Step 2: Deploy the app
 
-1. Create a [Railway](https://railway.app) account (free tier includes $5/month credit)
-2. Install the Railway CLI:
-   ```bash
-   npm install -g @railway/cli
-   railway login
-   ```
-3. Create a new project and provision managed databases:
-   ```bash
-   railway init
-   railway add --plugin postgresql
-   railway add --plugin redis
-   railway add --plugin mongodb
-   ```
-4. Set environment variables in the Railway dashboard:
-   ```
-   ANTHROPIC_API_KEY=sk-ant-...
-   DATABASE_URL=<auto-provided by Railway Postgres plugin>
-   REDIS_URL=<auto-provided by Railway Redis plugin>
-   MONGODB_URL=<auto-provided by Railway MongoDB plugin>
-   MONGODB_DB=brilliantbanker
-   ```
-5. Deploy backend and frontend as two services:
-   - **Backend**: root directory, uses `./Dockerfile`, set port to 8000
-   - **Frontend**: `./frontend` directory, uses `./frontend/Dockerfile`, set port to 5173
-6. Update the frontend's Vite proxy to point to the backend's Railway internal URL (Railway provides `<service>.railway.internal` hostnames between services). Alternatively, configure Railway's networking to route `/api`, `/banker`, `/smb` paths to the backend service.
-7. Railway provides a public `*.up.railway.app` HTTPS URL automatically.
+1. In the same Railway project, click **"+ New"** → **"GitHub Repo"**
+2. Select `shreya-v7/brilliant-banker`
+3. Railway detects `railway.json` and uses `Dockerfile.railway` automatically
 
-**Cost:** ~$5-15/month depending on usage.
+### Step 3: Set environment variables
 
-### Option B: DigitalOcean Droplet (most control)
+Click on the deployed service → **Variables** tab. Add these:
 
-Best if you want a single VM running the full Docker Compose stack.
+```
+ANTHROPIC_API_KEY=sk-ant-...
+MONGODB_URL=mongodb+srv://user:pass@cluster.mongodb.net
+MONGODB_DB=brilliantbanker
+```
 
-**Steps:**
+Then click on each database service and copy the connection URL using the **"Reference Variable"** syntax:
 
-1. Create a DigitalOcean Droplet (Ubuntu 24.04, $12/month for 2GB RAM)
-2. SSH in and install Docker:
-   ```bash
-   ssh root@<droplet-ip>
-   apt update && apt install -y docker.io docker-compose-v2
-   ```
-3. Clone the repo and configure:
-   ```bash
-   git clone <your-repo-url> brilliant-banker
-   cd brilliant-banker
-   cp .env.example .env
-   nano .env  # set ANTHROPIC_API_KEY
-   ```
-4. Start the stack:
-   ```bash
-   docker compose up -d --build
-   ```
-5. The app auto-seeds on first boot. Access at `http://<droplet-ip>:5173`.
-6. For HTTPS (required by UserTesting), add Caddy as a reverse proxy:
-   ```bash
-   apt install -y caddy
-   ```
-   Create `/etc/caddy/Caddyfile`:
-   ```
-   yourdomain.com {
-       reverse_proxy localhost:5173
-   }
-   ```
-   ```bash
-   systemctl restart caddy
-   ```
-   Caddy auto-provisions a Let's Encrypt TLS certificate.
+- `DATABASE_URL` → click PostgreSQL service → copy `DATABASE_URL` (Railway auto-injects it)
+- `REDIS_URL` → click Redis service → copy `REDIS_URL` (Railway auto-injects it)
 
-**Cost:** $12/month. Use a cheap domain ($2/year from Namecheap) or a free `*.duckdns.org` subdomain.
+Railway auto-converts reference variables between services.
 
-### Option C: Render
+### Step 4: Generate a public URL
 
-Render requires each service to be deployed separately (no Docker Compose).
+Click on your app service → **Settings** → **Networking** → **Generate Domain**. Railway gives you an `https://*.up.railway.app` URL.
 
-1. Create a [Render](https://render.com) account
-2. Add managed databases: PostgreSQL (free tier), Redis ($7/month)
-3. Use [MongoDB Atlas](https://www.mongodb.com/atlas) free tier (512MB, more than enough for demo)
-4. Deploy backend as a **Web Service** (Docker, root directory)
-5. Deploy frontend as a **Static Site** or **Web Service** (Docker, `./frontend` directory)
-6. Set all env vars in Render's dashboard
-7. Render provides `*.onrender.com` HTTPS URLs
+### Step 5: Verify
 
-**Cost:** ~$7-14/month.
+Visit your Railway URL. The app auto-seeds demo data on first boot (takes ~15s). You should see the login screen.
 
-### UserTesting-Specific Notes
+**Cost:** ~$5-15/month. Each tester conversation costs ~$0.02-0.05 in Anthropic API calls.
 
-- **Testers need a live URL** — UserTesting.com opens your URL in the tester's browser. There is no way to run locally.
-- **HTTPS is required** — all three hosting options above provide it.
-- **First load may be slow on free tiers** — Railway and Render free tiers spin down after inactivity. The first request takes ~15s to cold-start. Upgrade to a paid plan or keep the service warm with a cron ping to `/health`.
-- **API key cost** — each tester conversation costs ~$0.02-0.05 in Anthropic API calls. Budget ~$5-10 for a 50-tester study.
-- **Demo guidance** — the login screen includes a prompt telling testers to start with "Business Owner" first. The floating Demo button on every screen opens a step-by-step walkthrough.
+### UserTesting notes
+
+- Testers need the live Railway `https://` URL — they cannot run Docker locally.
+- The login screen includes guidance telling testers to start with "Business Owner" first.
+- The floating **Demo** button on every screen opens a step-by-step walkthrough.
+- Budget ~$5-10 in API costs for a 50-tester study.
 
 ---
 

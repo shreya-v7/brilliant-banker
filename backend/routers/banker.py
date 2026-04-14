@@ -17,6 +17,7 @@ from backend.models.schemas import (
     BankerNoteOut,
     BankerNoteRequest,
 )
+from backend.observability.metrics import CREDIT_DECISIONS
 from backend.services.notify_service import draft_decision_notification
 from backend.services.stream_service import publish_event, decision_event
 
@@ -103,6 +104,8 @@ async def create_decision(
 
     # Resolve banker name for the event record
     resolved_banker_id = banker_id or "banker-demo-001"
+
+    CREDIT_DECISIONS.labels(action=body.action).inc()
 
     event = LeadEvent(
         lead_id=lead.id,
