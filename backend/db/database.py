@@ -13,28 +13,17 @@ from sqlalchemy import (
     Text,
     func,
 )
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, relationship
-
-import ssl as _ssl
 
 from backend.models.schemas import Settings
 
 settings = Settings()
 
-_connect_args: dict = {}
-if settings.is_remote_db:
-    _ctx = _ssl.create_default_context()
-    _ctx.check_hostname = False
-    _ctx.verify_mode = _ssl.CERT_NONE
-    _connect_args["ssl"] = _ctx
-
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=False,
-    pool_size=5,
-    connect_args=_connect_args,
+    connect_args={},
 )
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
@@ -46,7 +35,7 @@ class Base(DeclarativeBase):
 class SMB(Base):
     __tablename__ = "smbs"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     name = Column(String(200), nullable=False)
     business_type = Column(String(100), nullable=False)
     annual_revenue = Column(Integer, nullable=False)
@@ -64,9 +53,9 @@ class SMB(Base):
 class Lead(Base):
     __tablename__ = "leads"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    smb_id = Column(UUID(as_uuid=True), ForeignKey("smbs.id"), nullable=False)
-    assigned_banker_id = Column(UUID(as_uuid=True), ForeignKey("bankers.id"), nullable=True)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    smb_id = Column(String(36), ForeignKey("smbs.id"), nullable=False)
+    assigned_banker_id = Column(String(36), ForeignKey("bankers.id"), nullable=True)
     status = Column(String(20), nullable=False, default="pending")
     requested_amount = Column(Integer, nullable=True)
     credit_score = Column(Float, nullable=True)
@@ -82,8 +71,8 @@ class Lead(Base):
 class LeadEvent(Base):
     __tablename__ = "lead_events"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    lead_id = Column(UUID(as_uuid=True), ForeignKey("leads.id"), nullable=False)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    lead_id = Column(String(36), ForeignKey("leads.id"), nullable=False)
     action = Column(String(20), nullable=False)
     amount = Column(Integer, nullable=True)
     banker_note = Column(Text, nullable=True)
@@ -97,7 +86,7 @@ class LeadEvent(Base):
 class Banker(Base):
     __tablename__ = "bankers"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     name = Column(String(200), nullable=False)
     title = Column(String(200), nullable=False)
     region = Column(String(200), nullable=False)
@@ -110,10 +99,10 @@ class Banker(Base):
 class Transaction(Base):
     __tablename__ = "transactions"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    smb_id = Column(UUID(as_uuid=True), ForeignKey("smbs.id"), nullable=False)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    smb_id = Column(String(36), ForeignKey("smbs.id"), nullable=False)
     description = Column(String(300), nullable=False)
-    amount = Column(Integer, nullable=False)   # positive = credit, negative = debit
+    amount = Column(Integer, nullable=False)
     category = Column(String(100), nullable=False, default="other")
     txn_date = Column(DateTime, nullable=False)
     created_at = Column(DateTime, server_default=func.now())
@@ -124,14 +113,25 @@ class Transaction(Base):
 class BankerNote(Base):
     __tablename__ = "banker_notes"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    smb_id = Column(UUID(as_uuid=True), ForeignKey("smbs.id"), nullable=False)
-    banker_id = Column(UUID(as_uuid=True), ForeignKey("bankers.id"), nullable=False)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    smb_id = Column(String(36), ForeignKey("smbs.id"), nullable=False)
+    banker_id = Column(String(36), ForeignKey("bankers.id"), nullable=False)
     note = Column(Text, nullable=False)
     created_at = Column(DateTime, server_default=func.now())
 
     smb = relationship("SMB", back_populates="banker_notes", lazy="selectin")
     banker = relationship("Banker", back_populates="notes", lazy="selectin")
+
+
+class Conversation(Base):
+    """Chat history — replaces MongoDB conversations collection."""
+    __tablename__ = "conversations"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    smb_id = Column(String(100), nullable=False, index=True)
+    role = Column(String(20), nullable=False)
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
 
 
 async def init_db() -> None:

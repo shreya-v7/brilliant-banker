@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.db.postgres import Lead, LeadEvent, SMB, Banker, BankerNote, get_session
+from backend.db.database import Lead, LeadEvent, SMB, Banker, BankerNote, get_session
 from backend.models.schemas import (
     DecisionRequest,
     DecisionResponse,
@@ -17,14 +16,13 @@ from backend.models.schemas import (
     BankerNoteOut,
     BankerNoteRequest,
 )
-from backend.observability.metrics import CREDIT_DECISIONS
 from backend.services.notify_service import draft_decision_notification
 from backend.services.stream_service import publish_event, decision_event
 
 router = APIRouter(prefix="/banker", tags=["banker"])
 
 
-@router.get("/portfolio", response_model=PortfolioOut, summary="Get all SMBs in the portfolio")
+@router.get("/portfolio", response_model=PortfolioOut)
 async def get_portfolio(session: AsyncSession = Depends(get_session)):
     result = await session.execute(select(SMB).order_by(SMB.cash_stability))
     smbs = result.scalars().all()
@@ -45,9 +43,9 @@ async def get_portfolio(session: AsyncSession = Depends(get_session)):
     )
 
 
-@router.get("/leads", response_model=list[LeadOut], summary="List all leads")
+@router.get("/leads", response_model=list[LeadOut])
 async def list_leads(
-    status: Optional[str] = Query(None, description="Filter by status"),
+    status: Optional[str] = Query(None),
     session: AsyncSession = Depends(get_session),
 ):
     query = select(Lead).order_by(Lead.urgency_score.desc())
@@ -80,19 +78,15 @@ async def list_leads(
     return out
 
 
-@router.post(
-    "/leads/{lead_id}/decision",
-    response_model=DecisionResponse,
-    summary="Record banker decision on a lead",
-)
+@router.post("/leads/{lead_id}/decision", response_model=DecisionResponse)
 async def create_decision(
     lead_id: str,
     body: DecisionRequest,
-    banker_id: Optional[str] = Query(None, description="Banker UUID making the decision"),
+    banker_id: Optional[str] = Query(None),
     session: AsyncSession = Depends(get_session),
 ):
     result = await session.execute(
-        select(Lead).where(Lead.id == uuid.UUID(lead_id))
+        select(Lead).where(Lead.id == lead_id)
     )
     lead = result.scalar_one_or_none()
     if not lead:
@@ -102,21 +96,14 @@ async def create_decision(
     if not smb:
         raise HTTPException(status_code=404, detail="SMB not found for this lead")
 
-    # Resolve banker name for the event record
-    resolved_banker_id = banker_id or "banker-demo-001"
-
-    CREDIT_DECISIONS.labels(action=body.action).inc()
-
     event = LeadEvent(
         lead_id=lead.id,
         action=body.action,
         amount=body.amount,
         banker_note=body.banker_note,
-        banker_id=resolved_banker_id,
+        banker_id=banker_id or "banker-demo-001",
     )
     session.add(event)
-
-    # Update lead status
     lead.status = body.action
 
     try:
@@ -127,13 +114,12 @@ async def create_decision(
             reason=lead.reason or body.banker_note,
         )
     except Exception:
-        action_word = "approved" if body.action == "approved" else ("declined" if body.action == "declined" else "referred")
+        action_word = {"approved": "approved", "declined": "declined"}.get(body.action, "referred")
         notification_text = f"Your credit request has been {action_word}. Your Relationship Manager will follow up with details."
 
     event.sms_sent = notification_text
     await session.commit()
 
-    # Publish decision to RM stream
     try:
         await publish_event(decision_event(
             smb_id=str(smb.id),
@@ -152,18 +138,14 @@ async def create_decision(
     )
 
 
-@router.get(
-    "/smb/{smb_id}/notes",
-    response_model=list[BankerNoteOut],
-    summary="Get banker notes for an SMB",
-)
+@router.get("/smb/{smb_id}/notes", response_model=list[BankerNoteOut])
 async def get_notes(
     smb_id: str,
     session: AsyncSession = Depends(get_session),
 ):
     result = await session.execute(
         select(BankerNote)
-        .where(BankerNote.smb_id == uuid.UUID(smb_id))
+        .where(BankerNote.smb_id == smb_id)
         .order_by(BankerNote.created_at.desc())
     )
     notes = result.scalars().all()
@@ -178,28 +160,22 @@ async def get_notes(
     ]
 
 
-@router.post(
-    "/smb/{smb_id}/notes",
-    response_model=BankerNoteOut,
-    summary="Add a banker note for an SMB",
-)
+@router.post("/smb/{smb_id}/notes", response_model=BankerNoteOut)
 async def add_note(
     smb_id: str,
     body: BankerNoteRequest,
     banker_id: Optional[str] = Query(None),
     session: AsyncSession = Depends(get_session),
 ):
-    # Validate SMB exists
-    smb_result = await session.execute(select(SMB).where(SMB.id == uuid.UUID(smb_id)))
+    smb_result = await session.execute(select(SMB).where(SMB.id == smb_id))
     if not smb_result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="SMB not found")
 
-    # Resolve banker
     resolved_banker_id = None
     banker_name = "Banker"
     if banker_id:
         try:
-            b_result = await session.execute(select(Banker).where(Banker.id == uuid.UUID(banker_id)))
+            b_result = await session.execute(select(Banker).where(Banker.id == banker_id))
             banker = b_result.scalar_one_or_none()
             if banker:
                 resolved_banker_id = banker.id
@@ -208,8 +184,8 @@ async def add_note(
             pass
 
     note = BankerNote(
-        smb_id=uuid.UUID(smb_id),
-        banker_id=resolved_banker_id or uuid.UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+        smb_id=smb_id,
+        banker_id=resolved_banker_id or "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
         note=body.note,
     )
     session.add(note)

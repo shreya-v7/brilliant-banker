@@ -414,47 +414,34 @@ Tap the floating **Demo** button (bottom-right of any screen) to open the step-b
 
 ## Deploy to Railway
 
-The app deploys as a **single Railway service** — the production Dockerfile builds the React frontend into static files and serves everything from FastAPI. No proxy configuration needed.
+The app deploys as a **single Railway service** with **zero database setup** — it uses SQLite (file-based) for all data, Redis is replaced with in-memory pub/sub, and MongoDB is replaced with a SQLite table. The only environment variable you need is your Anthropic API key.
 
-### Step 1: Create databases on Railway
+### Step 1: Deploy the app
 
 1. Go to [railway.app](https://railway.app) and create a new project
-2. Click **"+ New"** → **"Database"** → add **PostgreSQL**
-3. Click **"+ New"** → **"Database"** → add **Redis**
-4. For MongoDB, go to [mongodb.com/atlas](https://www.mongodb.com/atlas), create a free cluster, and get the connection string
+2. Click **"+ New"** → **"GitHub Repo"**
+3. Select your `brilliant-banker` repo
+4. Railway detects `railway.json` and uses `Dockerfile.railway` automatically
 
-### Step 2: Deploy the app
+### Step 2: Set environment variable
 
-1. In the same Railway project, click **"+ New"** → **"GitHub Repo"**
-2. Select `shreya-v7/brilliant-banker`
-3. Railway detects `railway.json` and uses `Dockerfile.railway` automatically
-
-### Step 3: Set environment variables
-
-Click on the deployed service → **Variables** tab. Add these:
+Click on the deployed service → **Variables** tab. Add:
 
 ```
 ANTHROPIC_API_KEY=sk-ant-...
-MONGODB_URL=mongodb+srv://user:pass@cluster.mongodb.net
-MONGODB_DB=brilliantbanker
 ```
 
-Then click on each database service and copy the connection URL using the **"Reference Variable"** syntax:
+That's it. No databases to provision.
 
-- `DATABASE_URL` → click PostgreSQL service → copy `DATABASE_URL` (Railway auto-injects it)
-- `REDIS_URL` → click Redis service → copy `REDIS_URL` (Railway auto-injects it)
-
-Railway auto-converts reference variables between services.
-
-### Step 4: Generate a public URL
+### Step 3: Generate a public URL
 
 Click on your app service → **Settings** → **Networking** → **Generate Domain**. Railway gives you an `https://*.up.railway.app` URL.
 
-### Step 5: Verify
+### Step 4: Verify
 
 Visit your Railway URL. The app auto-seeds demo data on first boot (takes ~15s). You should see the login screen.
 
-**Cost:** ~$5-15/month. Each tester conversation costs ~$0.02-0.05 in Anthropic API calls.
+**Cost:** Railway free tier + ~$0.02-0.05 per conversation in Anthropic API calls.
 
 ### UserTesting notes
 
@@ -471,6 +458,6 @@ Visit your Railway URL. The app auto-seeds demo data on first boot (takes ~15s).
 - **Append-only decisions**: `lead_events` table stores each banker action; `leads` row is never updated
 - **All AI responses via Claude**: Chat replies, decision notifications, business briefs — no hardcoded strings
 - **Auto-escalation**: Credit requests over $10K automatically create a banker lead
-- **Multi-turn context**: Last 10 messages from MongoDB provide conversational continuity
-- **Async throughout**: asyncpg, motor, redis.asyncio
-- **Real-time RM stream**: Redis pub/sub powers SSE events so bankers see live client activity as it happens
+- **Multi-turn context**: Last 10 messages from SQLite provide conversational continuity
+- **Zero-config deployment**: SQLite for all data, in-memory pub/sub — no external databases needed
+- **Real-time RM stream**: In-memory asyncio broadcast powers SSE events so bankers see live client activity

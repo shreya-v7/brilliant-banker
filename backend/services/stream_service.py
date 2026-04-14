@@ -1,64 +1,42 @@
 """
-Real-time event stream via Redis pub/sub (Kafka-equivalent for the prototype).
+In-memory event broadcast replacing Redis pub/sub.
 
 Publishers  : chat endpoint, escalation tool, decision endpoint
 Subscribers : SSE endpoint consumed by the RM dashboard
-
-Channel: "rm:events"
 """
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from datetime import datetime, timezone
 from typing import Any, AsyncGenerator
 
-import redis.asyncio as aioredis
-
-from backend.models.schemas import Settings
-
 logger = logging.getLogger(__name__)
-settings = Settings()
 
-CHANNEL = "rm:events"
-
-
-def _redis_conn() -> aioredis.Redis:
-    kwargs: dict = {"decode_responses": True}
-    if settings.REDIS_URL.startswith("rediss://"):
-        kwargs["ssl_cert_reqs"] = "none"
-    return aioredis.from_url(settings.REDIS_URL, **kwargs)
+_subscribers: list[asyncio.Queue] = []
 
 
 async def publish_event(event: dict[str, Any]) -> None:
-    """Publish a structured event to the RM stream."""
-    r = _redis_conn()
-    try:
-        event.setdefault("timestamp", datetime.now(timezone.utc).isoformat())
-        payload = json.dumps(event, default=str)
-        await r.publish(CHANNEL, payload)
-        logger.info("Stream event published: %s [%s]", event.get("event_type"), event.get("smb_name", ""))
-    finally:
-        await r.aclose()
+    event.setdefault("timestamp", datetime.now(timezone.utc).isoformat())
+    for q in list(_subscribers):
+        try:
+            q.put_nowait(event)
+        except asyncio.QueueFull:
+            pass
+    logger.info("Stream event published: %s [%s]", event.get("event_type"), event.get("smb_name", ""))
 
 
 async def subscribe_events() -> AsyncGenerator[dict[str, Any], None]:
-    """Subscribe to the RM event stream. Yields parsed event dicts."""
-    r = _redis_conn()
-    pubsub = r.pubsub()
+    q: asyncio.Queue = asyncio.Queue(maxsize=256)
+    _subscribers.append(q)
     try:
-        await pubsub.subscribe(CHANNEL)
-        async for message in pubsub.listen():
-            if message["type"] == "message":
-                try:
-                    yield json.loads(message["data"])
-                except json.JSONDecodeError:
-                    continue
+        while True:
+            event = await q.get()
+            yield event
     finally:
-        await pubsub.unsubscribe(CHANNEL)
-        await pubsub.aclose()
-        await r.aclose()
+        _subscribers.remove(q)
 
 
 # ── Pre-built event constructors ──────────────────────────────────────────────

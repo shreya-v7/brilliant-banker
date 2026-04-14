@@ -1,5 +1,5 @@
 """
-Seed mock data into Postgres and Redis.
+Seed mock data into SQLite.
 
 Run from project root:
     python -m backend.seed.seed_data
@@ -14,11 +14,11 @@ from datetime import datetime, timedelta
 
 from sqlalchemy import select
 
-from backend.db.postgres import (
+from backend.db.database import (
     Base, SMB, Banker, Lead, LeadEvent, Transaction, BankerNote,
     engine, async_session, init_db,
 )
-from backend.db.redis_client import set_phone_mapping
+from backend.db.phone_map import set_phone_mapping
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -27,21 +27,21 @@ logger = logging.getLogger(__name__)
 
 MOCK_BANKERS = [
     {
-        "id": uuid.UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+        "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
         "name": "Sarah Chen",
         "title": "Senior Business Banking Advisor",
         "region": "Northeast",
         "email": "sarah.chen@pnc.com",
     },
     {
-        "id": uuid.UUID("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+        "id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
         "name": "Marcus Williams",
         "title": "SMB Relationship Manager",
         "region": "Southeast",
         "email": "marcus.williams@pnc.com",
     },
     {
-        "id": uuid.UUID("cccccccc-cccc-cccc-cccc-cccccccccccc"),
+        "id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
         "name": "Jordan Patel",
         "title": "Business Credit Specialist",
         "region": "Midwest",
@@ -53,7 +53,7 @@ MOCK_BANKERS = [
 
 MOCK_SMBS = [
     {
-        "id": uuid.UUID("11111111-1111-1111-1111-111111111111"),
+        "id": "11111111-1111-1111-1111-111111111111",
         "name": "Anne Fox",
         "business_type": "Floral design",
         "annual_revenue": 1_200_000,
@@ -63,7 +63,7 @@ MOCK_SMBS = [
         "phone": "+14151110001",
     },
     {
-        "id": uuid.UUID("22222222-2222-2222-2222-222222222222"),
+        "id": "22222222-2222-2222-2222-222222222222",
         "name": "Justin Strong",
         "business_type": "Dry cleaning",
         "annual_revenue": 532_000,
@@ -73,7 +73,7 @@ MOCK_SMBS = [
         "phone": "+14151110002",
     },
     {
-        "id": uuid.UUID("33333333-3333-3333-3333-333333333333"),
+        "id": "33333333-3333-3333-3333-333333333333",
         "name": "Melissa Murphy",
         "business_type": "Restaurant",
         "annual_revenue": 680_000,
@@ -83,7 +83,7 @@ MOCK_SMBS = [
         "phone": "+14151110003",
     },
     {
-        "id": uuid.UUID("44444444-4444-4444-4444-444444444444"),
+        "id": "44444444-4444-4444-4444-444444444444",
         "name": "Valentina Cruz",
         "business_type": "Bike tourism",
         "annual_revenue": 490_000,
@@ -93,7 +93,7 @@ MOCK_SMBS = [
         "phone": "+14151110004",
     },
     {
-        "id": uuid.UUID("55555555-5555-5555-5555-555555555555"),
+        "id": "55555555-5555-5555-5555-555555555555",
         "name": "Richard Watterson",
         "business_type": "Bookkeeping",
         "annual_revenue": 85_000,
@@ -109,7 +109,7 @@ MOCK_SMBS = [
 def days_ago(n): return datetime.now() - timedelta(days=n)
 
 MOCK_TRANSACTIONS = {
-    "11111111-1111-1111-1111-111111111111": [  # Anne Fox - Floral
+    "11111111-1111-1111-1111-111111111111": [
         {"description": "Wholesale Flowers - BloomNet", "amount": -8_400, "category": "supplies", "txn_date": days_ago(1)},
         {"description": "Wedding Event - Johnson Wedding", "amount": 12_500, "category": "revenue", "txn_date": days_ago(2)},
         {"description": "Payroll - ADP", "amount": -14_200, "category": "payroll", "txn_date": days_ago(3)},
@@ -129,7 +129,7 @@ MOCK_TRANSACTIONS = {
         {"description": "Insurance - Hiscox", "amount": -540, "category": "insurance", "txn_date": days_ago(28)},
         {"description": "Payroll - ADP", "amount": -14_200, "category": "payroll", "txn_date": days_ago(31)},
     ],
-    "22222222-2222-2222-2222-222222222222": [  # Justin Strong - Dry Cleaning
+    "22222222-2222-2222-2222-222222222222": [
         {"description": "Commercial Lease - Main St", "amount": -3_800, "category": "rent", "txn_date": days_ago(1)},
         {"description": "Daily Drop-off Revenue", "amount": 2_100, "category": "revenue", "txn_date": days_ago(1)},
         {"description": "Cleaning Chemicals - SupplyCo", "amount": -1_240, "category": "supplies", "txn_date": days_ago(3)},
@@ -146,7 +146,7 @@ MOCK_TRANSACTIONS = {
         {"description": "New Press Machine - Hoffman", "amount": -12_000, "category": "equipment", "txn_date": days_ago(26)},
         {"description": "Daily Drop-off Revenue", "amount": 1_780, "category": "revenue", "txn_date": days_ago(28)},
     ],
-    "33333333-3333-3333-3333-333333333333": [  # Melissa Murphy - Restaurant
+    "33333333-3333-3333-3333-333333333333": [
         {"description": "Food Delivery - Sysco", "amount": -6_800, "category": "supplies", "txn_date": days_ago(1)},
         {"description": "Dinner Service Revenue", "amount": 4_200, "category": "revenue", "txn_date": days_ago(1)},
         {"description": "Payroll - ADP", "amount": -18_400, "category": "payroll", "txn_date": days_ago(3)},
@@ -166,7 +166,7 @@ MOCK_TRANSACTIONS = {
         {"description": "Weekend Brunch Revenue", "amount": 3_900, "category": "revenue", "txn_date": days_ago(25)},
         {"description": "Food Delivery - Sysco", "amount": -6_200, "category": "supplies", "txn_date": days_ago(27)},
     ],
-    "44444444-4444-4444-4444-444444444444": [  # Valentina Cruz - Bike Tourism
+    "44444444-4444-4444-4444-444444444444": [
         {"description": "Tour Bookings - April", "amount": 5_200, "category": "revenue", "txn_date": days_ago(2)},
         {"description": "Bike Fleet Maintenance", "amount": -2_800, "category": "maintenance", "txn_date": days_ago(4)},
         {"description": "Payroll - Seasonal Staff", "amount": -9_100, "category": "payroll", "txn_date": days_ago(5)},
@@ -183,7 +183,7 @@ MOCK_TRANSACTIONS = {
         {"description": "Corporate Team Building", "amount": 6_400, "category": "revenue", "txn_date": days_ago(24)},
         {"description": "NSF - Payment Bounced", "amount": -35, "category": "fees", "txn_date": days_ago(26)},
     ],
-    "55555555-5555-5555-5555-555555555555": [  # Richard Watterson - Bookkeeping
+    "55555555-5555-5555-5555-555555555555": [
         {"description": "Client Retainer - March", "amount": 2_800, "category": "revenue", "txn_date": days_ago(1)},
         {"description": "Software - QuickBooks Pro", "amount": -180, "category": "software", "txn_date": days_ago(3)},
         {"description": "Client Retainer - Smith LLC", "amount": 1_400, "category": "revenue", "txn_date": days_ago(4)},
@@ -202,40 +202,36 @@ MOCK_TRANSACTIONS = {
 # ── Demo leads (some pending for the demo) ────────────────────────────────────
 
 MOCK_LEADS = [
-    # Melissa - restaurant struggling, high urgency credit request
     {
-        "id": uuid.UUID("1ead1111-1111-1111-1111-111111111111"),
-        "smb_id": uuid.UUID("33333333-3333-3333-3333-333333333333"),
+        "id": "1ead1111-1111-1111-1111-111111111111",
+        "smb_id": "33333333-3333-3333-3333-333333333333",
         "status": "pending",
         "requested_amount": 35_000,
         "credit_score": 0.64,
         "urgency_score": 0.85,
         "reason": "Requesting $35K line of credit to cover payroll gap and emergency HVAC repair. Cash flow has been strained by lower-than-expected foot traffic this quarter.",
     },
-    # Valentina - bike tour, seasonal cash crunch
     {
-        "id": uuid.UUID("2ead2222-2222-2222-2222-222222222222"),
-        "smb_id": uuid.UUID("44444444-4444-4444-4444-444444444444"),
+        "id": "2ead2222-2222-2222-2222-222222222222",
+        "smb_id": "44444444-4444-4444-4444-444444444444",
         "status": "pending",
         "requested_amount": 20_000,
         "credit_score": 0.57,
         "urgency_score": 0.72,
         "reason": "Seasonal business needs bridge financing to purchase 15 new e-bikes before peak summer season. Tour bookings are up 40% YoY but cash reserves are low.",
     },
-    # Justin - already approved (shows workflow completion)
     {
-        "id": uuid.UUID("3ead3333-3333-3333-3333-333333333333"),
-        "smb_id": uuid.UUID("22222222-2222-2222-2222-222222222222"),
+        "id": "3ead3333-3333-3333-3333-333333333333",
+        "smb_id": "22222222-2222-2222-2222-222222222222",
         "status": "approved",
         "requested_amount": 15_000,
         "credit_score": 0.71,
         "urgency_score": 0.55,
         "reason": "Equipment upgrade - new commercial press machine to expand capacity.",
     },
-    # Anne - referred for large amount
     {
-        "id": uuid.UUID("4ead4444-4444-4444-4444-444444444444"),
-        "smb_id": uuid.UUID("11111111-1111-1111-1111-111111111111"),
+        "id": "4ead4444-4444-4444-4444-444444444444",
+        "smb_id": "11111111-1111-1111-1111-111111111111",
         "status": "referred",
         "requested_amount": 120_000,
         "credit_score": 0.82,
@@ -244,10 +240,9 @@ MOCK_LEADS = [
     },
 ]
 
-# Events for the closed leads
 MOCK_LEAD_EVENTS = [
     {
-        "lead_id": uuid.UUID("3ead3333-3333-3333-3333-333333333333"),
+        "lead_id": "3ead3333-3333-3333-3333-333333333333",
         "action": "approved",
         "amount": 15_000,
         "banker_note": "Strong payment history and stable cash flow. Approved standard LOC.",
@@ -255,7 +250,7 @@ MOCK_LEAD_EVENTS = [
         "sms_sent": "Great news, Justin! Your $15,000 line of credit has been approved. You can access funds through your PNC account within 24 hours.",
     },
     {
-        "lead_id": uuid.UUID("4ead4444-4444-4444-4444-444444444444"),
+        "lead_id": "4ead4444-4444-4444-4444-444444444444",
         "action": "referred",
         "amount": 120_000,
         "banker_note": "Great profile but amount requires SBA review. Referring to specialist team.",
@@ -264,27 +259,29 @@ MOCK_LEAD_EVENTS = [
     },
 ]
 
-# Demo banker notes
 MOCK_NOTES = [
     {
-        "smb_id": uuid.UUID("33333333-3333-3333-3333-333333333333"),
-        "banker_id": uuid.UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+        "smb_id": "33333333-3333-3333-3333-333333333333",
+        "banker_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
         "note": "Called Melissa 4/2. HVAC repair hurt March numbers badly. Strong customer retention, just needs bridge financing. Follow up on LOC application status.",
     },
     {
-        "smb_id": uuid.UUID("44444444-4444-4444-4444-444444444444"),
-        "banker_id": uuid.UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+        "smb_id": "44444444-4444-4444-4444-444444444444",
+        "banker_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
         "note": "Valentina has excellent tour reviews online. Seasonal pattern is normal for bike tourism. E-bike purchase is strategic — consider approving with seasonal repayment schedule.",
     },
     {
-        "smb_id": uuid.UUID("11111111-1111-1111-1111-111111111111"),
-        "banker_id": uuid.UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+        "smb_id": "11111111-1111-1111-1111-111111111111",
+        "banker_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
         "note": "Anne's second location plan is solid. She's been a PNC client for 8 years with zero missed payments. Fast-track SBA 7(a) review.",
     },
 ]
 
 
 async def seed():
+    from pathlib import Path
+    Path("data").mkdir(exist_ok=True)
+
     logger.info("Initializing database tables...")
     await init_db()
 
@@ -316,14 +313,13 @@ async def seed():
         existing_txns = {r[0] for r in (await session.execute(select(Transaction.smb_id))).all()}
         txn_added = 0
         for smb_id_str, txns in MOCK_TRANSACTIONS.items():
-            smb_uuid = uuid.UUID(smb_id_str)
-            if smb_uuid in existing_txns:
+            if smb_id_str in existing_txns:
                 logger.info("  Skip transactions for SMB %s (already seeded)", smb_id_str)
                 continue
             for t in txns:
                 if t["amount"] == 0:
                     continue
-                session.add(Transaction(smb_id=smb_uuid, **t))
+                session.add(Transaction(smb_id=smb_id_str, **t))
                 txn_added += 1
         await session.commit()
         logger.info("Transactions: %d added", txn_added)
@@ -357,11 +353,11 @@ async def seed():
             await session.commit()
             logger.info("Banker notes: %d added", len(MOCK_NOTES))
 
-    # ── Redis phone mappings ──
-    logger.info("Seeding Redis phone mappings...")
+    # ── Phone mappings (in-memory) ──
+    logger.info("Seeding phone mappings...")
     for data in MOCK_SMBS:
         await set_phone_mapping(data["phone"], str(data["id"]))
-        logger.info("  Redis: %s -> %s", data["phone"], data["id"])
+        logger.info("  Phone: %s -> %s", data["phone"], data["id"])
 
     logger.info("Seed complete!")
 

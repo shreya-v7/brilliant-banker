@@ -7,14 +7,14 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5173,
     proxy: {
-      '/api': 'http://api:8000',
+      '/api': 'http://localhost:8000',
       '/banker/stream': {
-        target: 'http://api:8000',
+        target: 'http://localhost:8000',
         headers: { 'Connection': 'keep-alive' },
       },
-      '/banker': 'http://api:8000',
-      '/smb': 'http://api:8000',
-      '/health': 'http://api:8000',
+      '/banker': 'http://localhost:8000',
+      '/smb': 'http://localhost:8000',
+      '/health': 'http://localhost:8000',
     },
   },
 })

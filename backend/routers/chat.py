@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import logging
-import uuid
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -10,12 +8,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.agent.graph import run_agent
-from backend.db.mongo_client import get_history, save_message
-from backend.db.postgres import SMB, Banker, get_session, async_session
-from backend.models.schemas import BankerOut, BankerLoginRequest, RMContact
-from backend.observability.metrics import CHAT_MESSAGES, ESCALATIONS
+from backend.db.conversations import get_history, save_message
+from backend.db.database import SMB, Banker, get_session, async_session
+from backend.models.schemas import BankerOut, BankerLoginRequest
 from backend.services.claude_service import generate_rm_highlight
-from backend.services.stream_service import publish_event, chat_highlight_event, escalation_event
+from backend.services.stream_service import publish_event, chat_highlight_event
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["chat"])
@@ -30,6 +27,7 @@ class RMContactOut(BaseModel):
     name: str
     title: str
     email: str
+
 
 class ChatResponse(BaseModel):
     reply: str
@@ -65,7 +63,7 @@ async def mock_login(
     session: AsyncSession = Depends(get_session),
 ):
     result = await session.execute(
-        select(SMB).where(SMB.id == uuid.UUID(body.smb_id))
+        select(SMB).where(SMB.id == body.smb_id)
     )
     smb = result.scalar_one_or_none()
     if not smb:
@@ -124,7 +122,7 @@ async def banker_login(
     session: AsyncSession = Depends(get_session),
 ):
     result = await session.execute(
-        select(Banker).where(Banker.id == uuid.UUID(body.banker_id))
+        select(Banker).where(Banker.id == body.banker_id)
     )
     banker = result.scalar_one_or_none()
     if not banker:
@@ -161,17 +159,11 @@ async def chat(body: ChatRequest):
     tool_result = result.get("tool_result", {})
     escalation_result = result.get("escalation_result", {})
 
-    CHAT_MESSAGES.labels(intent=intent or "unknown").inc()
-    if escalated:
-        ESCALATIONS.inc()
-
-    # For auto-escalations, merge the escalation result into tool_result for stream
     esc_source = tool_result if tool_result.get("ticket_number") else escalation_result
 
     await save_message(smb_id, "user", message)
     await save_message(smb_id, "assistant", reply)
 
-    # Extract ticket + RM info from whichever source has it
     ticket_number = esc_source.get("ticket_number")
     rm_data = esc_source.get("assigned_rm")
     assigned_rm = None
@@ -182,7 +174,6 @@ async def chat(body: ChatRequest):
             email=rm_data.get("email", ""),
         )
 
-    # Publish to RM stream (fire-and-forget — don't block the response)
     try:
         smb_name = tool_result.get("smb_name") or await _resolve_smb_name(smb_id)
 
@@ -197,7 +188,6 @@ async def chat(body: ChatRequest):
         urgency = "high" if escalated else (
             "medium" if intent in ("credit_prequal_request", "cash_flow_query") else "low"
         )
-        requested_amount = tool_result.get("requested_amount")
 
         event = chat_highlight_event(
             smb_id=smb_id,
@@ -206,7 +196,7 @@ async def chat(body: ChatRequest):
             highlight=highlight,
             escalated=escalated,
             urgency=urgency,
-            requested_amount=requested_amount,
+            requested_amount=tool_result.get("requested_amount"),
             ticket_number=ticket_number,
             rm_name=assigned_rm.name if assigned_rm else None,
         )
@@ -224,11 +214,10 @@ async def chat(body: ChatRequest):
 
 
 async def _resolve_smb_name(smb_id: str) -> str:
-    """Quick lookup of SMB name for stream events."""
     try:
         async with async_session() as session:
             result = await session.execute(
-                select(SMB.name).where(SMB.id == uuid.UUID(smb_id))
+                select(SMB.name).where(SMB.id == smb_id)
             )
             return result.scalar_one_or_none() or smb_id
     except Exception:

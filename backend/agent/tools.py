@@ -5,9 +5,8 @@ import uuid
 from typing import Any
 
 from sqlalchemy import select
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 
-from backend.db.postgres import Banker, Lead, SMB, async_session
+from backend.db.database import Banker, Lead, SMB, async_session
 from backend.models.schemas import (
     CashFlowForecast,
     CreditPrequalResult,
@@ -59,11 +58,11 @@ FAQ_ENTRIES = [
 
 async def get_cash_flow_forecast(smb_id: str) -> dict[str, Any]:
     from datetime import datetime, timedelta
-    from backend.db.postgres import Transaction
+    from backend.db.database import Transaction
 
     async with async_session() as session:
         result = await session.execute(
-            select(SMB).where(SMB.id == uuid.UUID(smb_id))
+            select(SMB).where(SMB.id == smb_id)
         )
         smb = result.scalar_one_or_none()
 
@@ -73,7 +72,7 @@ async def get_cash_flow_forecast(smb_id: str) -> dict[str, Any]:
         cutoff = datetime.now() - timedelta(days=30)
         txn_result = await session.execute(
             select(Transaction)
-            .where(Transaction.smb_id == uuid.UUID(smb_id))
+            .where(Transaction.smb_id == smb_id)
             .where(Transaction.txn_date >= cutoff)
         )
         recent_txns = txn_result.scalars().all()
@@ -110,7 +109,7 @@ async def get_cash_flow_forecast(smb_id: str) -> dict[str, Any]:
 async def check_credit_prequal(smb_id: str, requested_amount: int = 50000) -> dict[str, Any]:
     async with async_session() as session:
         result = await session.execute(
-            select(SMB).where(SMB.id == uuid.UUID(smb_id))
+            select(SMB).where(SMB.id == smb_id)
         )
         smb = result.scalar_one_or_none()
 
@@ -182,9 +181,9 @@ async def search_faq(query: str) -> dict[str, Any]:
     ).model_dump()
 
 
-def _make_ticket_number(lead_id: uuid.UUID) -> str:
+def _make_ticket_number(lead_id: str) -> str:
     """Generate a human-readable ticket number from the lead UUID."""
-    hex_part = str(lead_id).replace("-", "")[:6].upper()
+    hex_part = lead_id.replace("-", "")[:6].upper()
     return f"TKT-{hex_part}"
 
 
@@ -206,7 +205,7 @@ async def escalate_to_banker(
         assigned_banker = banker_result.scalar_one_or_none()
 
         lead = Lead(
-            smb_id=uuid.UUID(smb_id),
+            smb_id=smb_id,
             assigned_banker_id=assigned_banker.id if assigned_banker else None,
             status="pending",
             urgency_score=urgency_score,

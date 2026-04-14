@@ -21,7 +21,7 @@ router = APIRouter(prefix="/banker", tags=["stream"])
 
 
 async def _event_generator():
-    """Yield SSE-formatted events from the Redis pub/sub channel."""
+    """Yield SSE-formatted events from the in-memory broadcast."""
     yield "event: connected\ndata: {\"status\":\"connected\"}\n\n"
 
     try:

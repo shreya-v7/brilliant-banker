@@ -4,35 +4,15 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str = ""
-    DATABASE_URL: str = "postgresql+asyncpg://user:pass@postgres:5432/brilliantbanker"
-    REDIS_URL: str = "redis://redis:6379"
-    MONGODB_URL: str = "mongodb://mongo:27017"
-    MONGODB_DB: str = "brilliantbanker"
-    ALLOWED_ORIGINS: str = ""
-    RATE_LIMIT_PER_MINUTE: int = 30
+    DATABASE_URL: str = "sqlite+aiosqlite:///./data/brilliantbanker.db"
 
     model_config = {"env_file": ".env", "extra": "ignore"}
-
-    @model_validator(mode="after")
-    def _fix_database_url(self):
-        url = self.DATABASE_URL
-        if url.startswith("postgres://"):
-            url = url.replace("postgres://", "postgresql+asyncpg://", 1)
-        elif url.startswith("postgresql://") and "+asyncpg" not in url:
-            url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
-        self.DATABASE_URL = url
-        return self
-
-    @property
-    def is_remote_db(self) -> bool:
-        local_hosts = ("localhost", "127.0.0.1", "postgres")
-        return not any(h in self.DATABASE_URL for h in local_hosts)
 
 
 # --- Agent state ---

@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import uuid
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.db.postgres import SMB, Lead, LeadEvent, Transaction, get_session
+from backend.db.database import SMB, Lead, LeadEvent, Transaction, get_session
 from backend.models.schemas import SMBProfile, TransactionOut, SMBLeadOut, RMContact
 from backend.services.claude_service import generate_ai_brief
 
@@ -23,7 +21,7 @@ async def get_smb_profile(
     session: AsyncSession = Depends(get_session),
 ):
     result = await session.execute(
-        select(SMB).where(SMB.id == uuid.UUID(smb_id))
+        select(SMB).where(SMB.id == smb_id)
     )
     smb = result.scalar_one_or_none()
     if not smb:
@@ -68,7 +66,7 @@ async def get_transactions(
 ):
     result = await session.execute(
         select(Transaction)
-        .where(Transaction.smb_id == uuid.UUID(smb_id))
+        .where(Transaction.smb_id == smb_id)
         .order_by(Transaction.txn_date.desc())
         .limit(limit)
     )
@@ -96,7 +94,7 @@ async def get_smb_escalations(
 ):
     result = await session.execute(
         select(Lead)
-        .where(Lead.smb_id == uuid.UUID(smb_id))
+        .where(Lead.smb_id == smb_id)
         .order_by(Lead.created_at.desc())
     )
     leads = result.scalars().all()
