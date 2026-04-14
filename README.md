@@ -168,7 +168,7 @@ React Mobile App → POST /api/chat → LangGraph Agent → Claude → JSON resp
 | **Client Profile** | 4-tab view: Overview (stats + AI brief), Transactions (30-day summary + list), Credit History, Banker Notes |
 | **Profile** | Banker info + logout |
 
-## Setup
+## Setup (local)
 
 ### 1. Clone and configure
 
@@ -184,17 +184,13 @@ cp .env.example .env
 docker compose up --build
 ```
 
-This starts PostgreSQL, Redis, MongoDB, the FastAPI backend (port 8000), and the React frontend (port 5173).
+This starts PostgreSQL, Redis, MongoDB, the FastAPI backend (port 8000), and the React frontend (port 5173). **Demo data is auto-seeded on first startup** — no manual seed step needed.
 
-### 3. Seed mock data
-
-```bash
-docker compose exec api python -m backend.seed.seed_data
-```
-
-### 4. Open the app
+### 3. Open the app
 
 Visit **http://localhost:5173** — select any demo user to start.
+
+> Manual re-seed (if needed): `docker compose exec api python -m backend.seed.seed_data`
 
 ## Demo Users
 
@@ -413,6 +409,110 @@ Tap the floating **Demo** button (bottom-right of any screen) to open the step-b
 4. **RM reviews** — Opens credit review, generates the AI brief, reviews the conversation playbook
 5. **RM decides** — Approves with an amount; Claude drafts the approval notification
 6. **SMB sees result** — Melissa's Activity tab shows "approved" with the notification text
+
+---
+
+## Hosting for UserTesting
+
+UserTesting.com requires a publicly accessible `https://` URL — testers cannot run Docker locally. Here are the recommended hosting paths, cheapest first.
+
+### Option A: Railway (recommended — easiest)
+
+Railway natively supports multi-service Docker Compose deployments.
+
+**Steps:**
+
+1. Create a [Railway](https://railway.app) account (free tier includes $5/month credit)
+2. Install the Railway CLI:
+   ```bash
+   npm install -g @railway/cli
+   railway login
+   ```
+3. Create a new project and provision managed databases:
+   ```bash
+   railway init
+   railway add --plugin postgresql
+   railway add --plugin redis
+   railway add --plugin mongodb
+   ```
+4. Set environment variables in the Railway dashboard:
+   ```
+   ANTHROPIC_API_KEY=sk-ant-...
+   DATABASE_URL=<auto-provided by Railway Postgres plugin>
+   REDIS_URL=<auto-provided by Railway Redis plugin>
+   MONGODB_URL=<auto-provided by Railway MongoDB plugin>
+   MONGODB_DB=brilliantbanker
+   ```
+5. Deploy backend and frontend as two services:
+   - **Backend**: root directory, uses `./Dockerfile`, set port to 8000
+   - **Frontend**: `./frontend` directory, uses `./frontend/Dockerfile`, set port to 5173
+6. Update the frontend's Vite proxy to point to the backend's Railway internal URL (Railway provides `<service>.railway.internal` hostnames between services). Alternatively, configure Railway's networking to route `/api`, `/banker`, `/smb` paths to the backend service.
+7. Railway provides a public `*.up.railway.app` HTTPS URL automatically.
+
+**Cost:** ~$5-15/month depending on usage.
+
+### Option B: DigitalOcean Droplet (most control)
+
+Best if you want a single VM running the full Docker Compose stack.
+
+**Steps:**
+
+1. Create a DigitalOcean Droplet (Ubuntu 24.04, $12/month for 2GB RAM)
+2. SSH in and install Docker:
+   ```bash
+   ssh root@<droplet-ip>
+   apt update && apt install -y docker.io docker-compose-v2
+   ```
+3. Clone the repo and configure:
+   ```bash
+   git clone <your-repo-url> brilliant-banker
+   cd brilliant-banker
+   cp .env.example .env
+   nano .env  # set ANTHROPIC_API_KEY
+   ```
+4. Start the stack:
+   ```bash
+   docker compose up -d --build
+   ```
+5. The app auto-seeds on first boot. Access at `http://<droplet-ip>:5173`.
+6. For HTTPS (required by UserTesting), add Caddy as a reverse proxy:
+   ```bash
+   apt install -y caddy
+   ```
+   Create `/etc/caddy/Caddyfile`:
+   ```
+   yourdomain.com {
+       reverse_proxy localhost:5173
+   }
+   ```
+   ```bash
+   systemctl restart caddy
+   ```
+   Caddy auto-provisions a Let's Encrypt TLS certificate.
+
+**Cost:** $12/month. Use a cheap domain ($2/year from Namecheap) or a free `*.duckdns.org` subdomain.
+
+### Option C: Render
+
+Render requires each service to be deployed separately (no Docker Compose).
+
+1. Create a [Render](https://render.com) account
+2. Add managed databases: PostgreSQL (free tier), Redis ($7/month)
+3. Use [MongoDB Atlas](https://www.mongodb.com/atlas) free tier (512MB, more than enough for demo)
+4. Deploy backend as a **Web Service** (Docker, root directory)
+5. Deploy frontend as a **Static Site** or **Web Service** (Docker, `./frontend` directory)
+6. Set all env vars in Render's dashboard
+7. Render provides `*.onrender.com` HTTPS URLs
+
+**Cost:** ~$7-14/month.
+
+### UserTesting-Specific Notes
+
+- **Testers need a live URL** — UserTesting.com opens your URL in the tester's browser. There is no way to run locally.
+- **HTTPS is required** — all three hosting options above provide it.
+- **First load may be slow on free tiers** — Railway and Render free tiers spin down after inactivity. The first request takes ~15s to cold-start. Upgrade to a paid plan or keep the service warm with a cron ping to `/health`.
+- **API key cost** — each tester conversation costs ~$0.02-0.05 in Anthropic API calls. Budget ~$5-10 for a 50-tester study.
+- **Demo guidance** — the login screen includes a prompt telling testers to start with "Business Owner" first. The floating Demo button on every screen opens a step-by-step walkthrough.
 
 ---
 

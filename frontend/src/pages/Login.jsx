@@ -95,6 +95,11 @@ export default function Login({ onLogin, onShowMarketing }) {
             Two sides of the same platform. The SMB app runs as a mobile experience.
             The RM portal runs as a full desktop dashboard.
           </p>
+          <div className="mt-5 bg-pnc-orange/15 border border-pnc-orange/30 rounded-xl px-4 py-2.5 max-w-md">
+            <p className="text-pnc-orange text-xs font-semibold text-center">
+              Start with Business Owner, then try PNC Banker to see the full workflow
+            </p>
+          </div>
 
           {/* Two cards */}
           <div className="grid sm:grid-cols-2 gap-4 mt-10 w-full max-w-2xl">
