@@ -17,11 +17,25 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, relationship
 
+import ssl as _ssl
+
 from backend.models.schemas import Settings
 
 settings = Settings()
 
-engine = create_async_engine(settings.DATABASE_URL, echo=False, pool_size=5)
+_connect_args: dict = {}
+if settings.is_remote_db:
+    _ctx = _ssl.create_default_context()
+    _ctx.check_hostname = False
+    _ctx.verify_mode = _ssl.CERT_NONE
+    _connect_args["ssl"] = _ctx
+
+engine = create_async_engine(
+    settings.DATABASE_URL,
+    echo=False,
+    pool_size=5,
+    connect_args=_connect_args,
+)
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 

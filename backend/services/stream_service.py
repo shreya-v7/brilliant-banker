@@ -14,7 +14,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, AsyncGenerator
 
-import redis.asyncio as redis
+import redis.asyncio as aioredis
 
 from backend.models.schemas import Settings
 
@@ -24,9 +24,16 @@ settings = Settings()
 CHANNEL = "rm:events"
 
 
+def _redis_conn() -> aioredis.Redis:
+    kwargs: dict = {"decode_responses": True}
+    if settings.REDIS_URL.startswith("rediss://"):
+        kwargs["ssl_cert_reqs"] = "none"
+    return aioredis.from_url(settings.REDIS_URL, **kwargs)
+
+
 async def publish_event(event: dict[str, Any]) -> None:
     """Publish a structured event to the RM stream."""
-    r = redis.from_url(settings.REDIS_URL, decode_responses=True)
+    r = _redis_conn()
     try:
         event.setdefault("timestamp", datetime.now(timezone.utc).isoformat())
         payload = json.dumps(event, default=str)
@@ -38,7 +45,7 @@ async def publish_event(event: dict[str, Any]) -> None:
 
 async def subscribe_events() -> AsyncGenerator[dict[str, Any], None]:
     """Subscribe to the RM event stream. Yields parsed event dicts."""
-    r = redis.from_url(settings.REDIS_URL, decode_responses=True)
+    r = _redis_conn()
     pubsub = r.pubsub()
     try:
         await pubsub.subscribe(CHANNEL)

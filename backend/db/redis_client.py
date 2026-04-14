@@ -1,16 +1,25 @@
 from __future__ import annotations
 
-import redis.asyncio as redis
+import redis.asyncio as aioredis
 
 from backend.models.schemas import Settings
 
 settings = Settings()
 
-pool = redis.ConnectionPool.from_url(settings.REDIS_URL, decode_responses=True)
+_redis_kwargs: dict = {"decode_responses": True}
+if settings.REDIS_URL.startswith("rediss://"):
+    import ssl as _ssl
+    _ctx = _ssl.create_default_context()
+    _ctx.check_hostname = False
+    _ctx.verify_mode = _ssl.CERT_NONE
+    _redis_kwargs["ssl"] = True
+    _redis_kwargs["ssl_cert_reqs"] = "none"
+
+pool = aioredis.ConnectionPool.from_url(settings.REDIS_URL, **_redis_kwargs)
 
 
-def get_redis() -> redis.Redis:
-    return redis.Redis(connection_pool=pool)
+def get_redis() -> aioredis.Redis:
+    return aioredis.Redis(connection_pool=pool)
 
 
 async def phone_to_smb_id(phone: str) -> str | None:
