@@ -1,11 +1,12 @@
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Home, MessageCircle, ClipboardList, User } from 'lucide-react'
+import { Home, MessageCircle, FileText, ClipboardList, User } from 'lucide-react'
 
 const NAV_ITEMS = [
-  { path: '/', icon: Home, label: 'Home' },
-  { path: '/chat', icon: MessageCircle, label: 'Chat' },
-  { path: '/activity', icon: ClipboardList, label: 'Activity' },
-  { path: '/profile', icon: User, label: 'Profile' },
+  { path: '/business', icon: Home, label: 'Home' },
+  { path: '/business/chat', icon: MessageCircle, label: 'Chat' },
+  { path: '/business/forms', icon: FileText, label: 'Forms' },
+  { path: '/business/activity', icon: ClipboardList, label: 'Activity' },
+  { path: '/business/profile', icon: User, label: 'Profile' },
 ]
 
 export default function BottomNav() {

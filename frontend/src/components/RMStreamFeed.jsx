@@ -75,9 +75,23 @@ function EventItem({ event, onNavigate }) {
           )}
         </div>
         <p className="text-pnc-gray-900 text-xs font-semibold truncate">{event.smb_name}</p>
+        {event.intent_label && event.event_type === 'chat_highlight' && (
+          <p className="text-pnc-gray-500 text-[10px] font-medium mt-0.5">
+            Topic: {event.intent_label}
+            {event.topic_summary && event.topic_summary !== event.highlight
+              ? `  - ${event.topic_summary}`
+              : ''
+            }
+          </p>
+        )}
         <p className="text-pnc-gray-600 text-xs leading-relaxed mt-0.5">
           {event.highlight || event.notification_text || event.reason || ''}
         </p>
+        {event.user_message_preview && event.event_type === 'chat_highlight' && (
+          <p className="text-pnc-gray-400 text-[10px] italic mt-0.5 truncate">
+            "{event.user_message_preview}"
+          </p>
+        )}
         <div className="flex items-center gap-2 mt-1">
           {event.ticket_number && (
             <span className="flex items-center gap-1 text-[9px] font-bold text-pnc-orange">

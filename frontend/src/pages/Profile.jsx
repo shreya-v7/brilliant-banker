@@ -9,8 +9,9 @@ import {
   Sparkles,
   LogOut,
   Link,
+  Unlink,
   BookOpen,
-  ChevronRight,
+  ChevronDown,
   CheckCircle2,
 } from 'lucide-react'
 
@@ -30,23 +31,46 @@ function StatCard({ icon: Icon, label, value, color }) {
   )
 }
 
-const TPA_INTEGRATIONS = [
-  { name: 'QuickBooks', status: 'connected', color: 'text-green-600 bg-green-50', icon: '📊' },
-  { name: 'Square', status: 'connected', color: 'text-green-600 bg-green-50', icon: '⬛' },
-  { name: 'Shopify', status: 'not connected', color: 'text-pnc-gray-400 bg-pnc-gray-50', icon: '🛍' },
-  { name: 'Stripe', status: 'not connected', color: 'text-pnc-gray-400 bg-pnc-gray-50', icon: '💳' },
+const INITIAL_INTEGRATIONS = [
+  { id: 'accounting', name: 'Accounting Software', connected: true, icon: '📊' },
+  { id: 'pos', name: 'POS System', connected: true, icon: '⬛' },
+  { id: 'ecommerce', name: 'E-Commerce Platform', connected: false, icon: '🛍' },
+  { id: 'payment', name: 'Payment Processor', connected: false, icon: '💳' },
 ]
 
 const DOCS = [
-  { title: 'Getting Started Guide', subtitle: 'Set up your business account', icon: BookOpen },
-  { title: 'Cash Flow Basics', subtitle: 'Understanding your forecast', icon: TrendingUp },
-  { title: 'Credit Line Eligibility', subtitle: 'What bankers look for', icon: ShieldCheck },
+  {
+    title: 'Getting Started Guide',
+    subtitle: 'Set up your business account',
+    icon: BookOpen,
+    content: 'Welcome to PNC Business Banking. Your account includes AI-powered cash flow analysis, credit pre-qualification, and a dedicated Relationship Manager. Start by exploring the Dashboard for an overview of your finances, then try the AI Chat to ask questions about your account.',
+  },
+  {
+    title: 'Cash Flow Basics',
+    subtitle: 'Understanding your forecast',
+    icon: TrendingUp,
+    content: 'Your cash flow forecast is generated from your actual transaction history. The AI analyzes your income patterns, recurring expenses, and seasonal trends to project your next 30 days. A "Cash Stability" score above 70% means your cash flow is predictable and healthy.',
+  },
+  {
+    title: 'Credit Line Eligibility',
+    subtitle: 'What bankers look for',
+    icon: ShieldCheck,
+    content: 'Credit pre-qualification is based on three weighted factors: Cash Stability (40%), Payment History (35%), and Revenue Capacity (25%). Each factor is scored independently. If your request exceeds $10K, it\'s automatically escalated to your RM for review. You\'ll see the exact scorecard with pass/fail for each factor.',
+  },
 ]
 
 export default function Profile({ user, onLogout }) {
   const [brief, setBrief] = useState(null)
   const [loadingBrief, setLoadingBrief] = useState(false)
-  const [activeSection, setActiveSection] = useState('overview') // overview | integrations | docs
+  const [activeSection, setActiveSection] = useState('overview')
+  const [integrations, setIntegrations] = useState(INITIAL_INTEGRATIONS)
+  const [expandedDoc, setExpandedDoc] = useState(null)
+
+  const toggleIntegration = (id) => {
+    setIntegrations(prev => prev.map(i =>
+      i.id === id ? { ...i, connected: !i.connected } : i
+    ))
+  }
 
   const fetchBrief = () => {
     setLoadingBrief(true)
@@ -57,7 +81,7 @@ export default function Profile({ user, onLogout }) {
   }
 
   return (
-    <div className="px-4 py-4 pb-8">
+    <div className="px-4 py-4 pb-8" data-walkthrough="smb-profile">
       {/* Profile header */}
       <div className="flex items-center gap-4 mb-5">
         <div className="w-16 h-16 rounded-full bg-pnc-navy/5 flex items-center justify-center">
@@ -147,21 +171,31 @@ export default function Profile({ user, onLogout }) {
           <p className="text-pnc-gray-500 text-xs mb-4">
             Connect your business tools to give your banker a fuller picture of your finances.
           </p>
-          {TPA_INTEGRATIONS.map(({ name, status, color, icon }) => (
-            <div key={name} className="bg-white border border-pnc-gray-200 rounded-xl p-4 flex items-center gap-3">
+          {integrations.map(({ id, name, connected, icon }) => (
+            <div key={id} className="bg-white border border-pnc-gray-200 rounded-xl p-4 flex items-center gap-3">
               <span className="text-2xl">{icon}</span>
               <div className="flex-1">
                 <p className="text-pnc-gray-900 text-sm font-semibold">{name}</p>
                 <p className={`text-xs font-medium mt-0.5 ${
-                  status === 'connected' ? 'text-green-600' : 'text-pnc-gray-400'
+                  connected ? 'text-green-600' : 'text-pnc-gray-400'
                 }`}>
-                  {status === 'connected' ? '● Connected' : '○ Not connected'}
+                  {connected ? '● Connected' : '○ Not connected'}
                 </p>
               </div>
-              {status === 'connected' ? (
-                <CheckCircle2 size={18} className="text-green-500 shrink-0" />
+              {connected ? (
+                <button
+                  onClick={() => toggleIntegration(id)}
+                  className="text-pnc-gray-400 text-xs font-semibold shrink-0 flex items-center gap-1
+                             active:opacity-70 transition-opacity"
+                >
+                  <Unlink size={13} /> Disconnect
+                </button>
               ) : (
-                <button className="text-pnc-orange text-xs font-semibold shrink-0 flex items-center gap-1">
+                <button
+                  onClick={() => toggleIntegration(id)}
+                  className="text-pnc-orange text-xs font-semibold shrink-0 flex items-center gap-1
+                             active:opacity-70 transition-opacity"
+                >
                   <Link size={13} /> Connect
                 </button>
               )}
@@ -175,21 +209,31 @@ export default function Profile({ user, onLogout }) {
           <p className="text-pnc-gray-500 text-xs mb-4">
             Learn how to get the most from your PNC business account.
           </p>
-          {DOCS.map(({ title, subtitle, icon: Icon }) => (
-            <button
-              key={title}
-              className="w-full bg-white border border-pnc-gray-200 rounded-xl p-4 flex items-center gap-3 text-left active:bg-pnc-gray-50 transition-colors"
-            >
-              <div className="w-10 h-10 rounded-xl bg-pnc-navy/5 flex items-center justify-center shrink-0">
-                <Icon size={18} className="text-pnc-navy" />
+          {DOCS.map(({ title, subtitle, icon: Icon, content }) => {
+            const isOpen = expandedDoc === title
+            return (
+              <div key={title} className="bg-white border border-pnc-gray-200 rounded-xl overflow-hidden">
+                <button
+                  onClick={() => setExpandedDoc(isOpen ? null : title)}
+                  className="w-full p-4 flex items-center gap-3 text-left active:bg-pnc-gray-50 transition-colors"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-pnc-navy/5 flex items-center justify-center shrink-0">
+                    <Icon size={18} className="text-pnc-navy" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-pnc-gray-900 text-sm font-semibold">{title}</p>
+                    <p className="text-pnc-gray-500 text-xs mt-0.5">{subtitle}</p>
+                  </div>
+                  <ChevronDown size={16} className={`text-pnc-gray-400 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {isOpen && (
+                  <div className="px-4 pb-4 pt-0 border-t border-pnc-gray-100">
+                    <p className="text-pnc-gray-700 text-xs leading-relaxed pt-3">{content}</p>
+                  </div>
+                )}
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-pnc-gray-900 text-sm font-semibold">{title}</p>
-                <p className="text-pnc-gray-500 text-xs mt-0.5">{subtitle}</p>
-              </div>
-              <ChevronRight size={16} className="text-pnc-gray-400 shrink-0" />
-            </button>
-          ))}
+            )
+          })}
         </div>
       )}
 

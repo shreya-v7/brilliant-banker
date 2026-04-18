@@ -188,7 +188,7 @@ export default function Activity({ user }) {
   const FILTERS = ['', 'pending', 'approved', 'declined', 'referred']
 
   return (
-    <div className="px-4 py-4">
+    <div className="px-4 py-4" data-walkthrough="smb-activity">
       {/* Summary banner */}
       {escalations.length > 0 && (
         <div className="bg-white border border-pnc-gray-200 rounded-2xl p-4 mb-4">

@@ -9,7 +9,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import FileResponse
 
+from backend.db.conversations import clear_all_conversations
 from backend.db.database import init_db
+from backend.db.lead_utils import collapse_duplicate_pending_leads
 from backend.models.schemas import Settings
 from backend.routers import banker, chat, smb, stream
 
@@ -32,7 +34,7 @@ async def _auto_seed_if_empty():
                 logger.info("Database already seeded (%d SMBs)", count)
                 return
 
-        logger.info("Empty database — auto-seeding demo data...")
+        logger.info("Empty database  - auto-seeding demo data...")
         from backend.seed.seed_data import seed
         await seed()
         logger.info("Auto-seed complete")
@@ -43,8 +45,17 @@ async def _auto_seed_if_empty():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Path("data").mkdir(exist_ok=True)
-    logger.info("Starting up — initializing database")
+    logger.info("Starting up  - initializing database")
     await init_db()
+    try:
+        await clear_all_conversations()
+        logger.info("Cleared chat history (fresh run)")
+    except Exception as e:
+        logger.warning("Could not clear conversations: %s", e)
+    try:
+        await collapse_duplicate_pending_leads()
+    except Exception as e:
+        logger.warning("Could not collapse duplicate leads: %s", e)
     await _auto_seed_if_empty()
     yield
     logger.info("Shut down complete")

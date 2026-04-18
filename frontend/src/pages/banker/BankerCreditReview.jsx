@@ -12,6 +12,8 @@ import {
   Sparkles,
   ExternalLink,
   DollarSign,
+  ShieldCheck,
+  ShieldX,
 } from 'lucide-react'
 import { getLeads, submitDecision, getBankerSMBBrief } from '../../api'
 
@@ -52,18 +54,18 @@ function ConversationPlaybook({ lead, profile }) {
   if (lead.credit_score != null) {
     const score = (lead.credit_score * 100).toFixed(0)
     if (lead.credit_score >= 0.7) {
-      points.push(`Credit score of ${score} is strong — lead with the positive.`)
+      points.push(`Credit score of ${score} is strong  - lead with the positive.`)
     } else {
-      points.push(`Credit score of ${score} is borderline — address proactively.`)
+      points.push(`Credit score of ${score} is borderline  - address proactively.`)
     }
   }
 
   if (profile?.cash_stability != null) {
     const s = (profile.cash_stability * 100).toFixed(0)
     if (profile.cash_stability < 0.5) {
-      points.push(`Cash stability at ${s}% — ask about the root cause and timeline.`)
+      points.push(`Cash stability at ${s}%  - ask about the root cause and timeline.`)
     } else {
-      points.push(`Cash stability at ${s}% — acknowledge their solid cash management.`)
+      points.push(`Cash stability at ${s}%  - acknowledge their solid cash management.`)
     }
   }
 
@@ -89,6 +91,79 @@ function ConversationPlaybook({ lead, profile }) {
           </li>
         ))}
       </ul>
+    </div>
+  )
+}
+
+function CreditScorecard({ factors, declineReasons, creditScore }) {
+  if (!factors || factors.length === 0) return null
+
+  const composite = creditScore != null ? creditScore : factors.reduce((s, f) => s + f.weighted_score, 0)
+  const passed = composite >= 0.55
+
+  return (
+    <div className={`rounded-xl border p-3 ${passed ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+      <div className="flex items-center gap-2 mb-3">
+        {passed
+          ? <ShieldCheck size={15} className="text-green-600" />
+          : <ShieldX size={15} className="text-red-600" />
+        }
+        <span className={`text-xs font-bold ${passed ? 'text-green-700' : 'text-red-700'}`}>
+          Credit Scorecard  - {(composite * 100).toFixed(0)} / 100
+          {passed ? ' (Pre-qualified)' : ' (Below Threshold)'}
+        </span>
+      </div>
+
+      <div className="space-y-2.5">
+        {factors.map((f) => {
+          const pct = Math.round(f.score * 100)
+          const barColor = f.passed ? 'bg-green-500' : 'bg-red-400'
+          const thresholdPct = Math.round(f.threshold * 100)
+          return (
+            <div key={f.name}>
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-1.5">
+                  {f.passed
+                    ? <CheckCircle2 size={11} className="text-green-600" />
+                    : <XCircle size={11} className="text-red-500" />
+                  }
+                  <span className="text-pnc-gray-800 text-[11px] font-semibold">{f.name}</span>
+                  <span className="text-pnc-gray-400 text-[9px]">({(f.weight * 100).toFixed(0)}% weight)</span>
+                </div>
+                <span className={`text-[11px] font-bold tabular-nums ${f.passed ? 'text-green-700' : 'text-red-600'}`}>
+                  {pct}%
+                  <span className="text-pnc-gray-400 font-normal"> / {thresholdPct}% min</span>
+                </span>
+              </div>
+              <div className="relative w-full bg-white/60 rounded-full h-1.5">
+                <div
+                  className="absolute top-0 left-0 h-full bg-pnc-gray-300 rounded-full opacity-30"
+                  style={{ width: `${thresholdPct}%` }}
+                />
+                <div
+                  className={`relative h-full rounded-full ${barColor} transition-all`}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              <p className="text-pnc-gray-500 text-[10px] mt-0.5 leading-tight">{f.detail}</p>
+            </div>
+          )
+        })}
+      </div>
+
+      {declineReasons && declineReasons.length > 0 && (
+        <div className="mt-3 pt-2.5 border-t border-red-200">
+          <p className="text-red-700 text-[10px] font-bold uppercase tracking-wide mb-1.5">Decline Reasons</p>
+          <ul className="space-y-1">
+            {declineReasons.map((r, i) => (
+              <li key={i} className="flex items-start gap-1.5 text-red-700 text-[11px] leading-tight">
+                <XCircle size={10} className="text-red-400 mt-0.5 shrink-0" />
+                {r}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   )
 }
@@ -184,12 +259,19 @@ function LeadCard({ lead, onDecide, user }) {
               <p className="text-pnc-gray-900 text-sm font-semibold">{fmt(lead.requested_amount)}</p>
             </div>
             <div className="bg-pnc-gray-50 rounded-xl px-3 py-2">
-              <p className="text-pnc-gray-500 text-[10px] uppercase tracking-wide">Credit Score</p>
+              <p className="text-pnc-gray-500 text-[10px] uppercase tracking-wide">Composite Score</p>
               <p className="text-pnc-gray-900 text-sm font-semibold">
                 {lead.credit_score != null ? (lead.credit_score * 100).toFixed(0) : '--'}
               </p>
             </div>
           </div>
+
+          {/* Credit Scorecard */}
+          <CreditScorecard
+            factors={lead.factors}
+            declineReasons={lead.decline_reasons}
+            creditScore={lead.credit_score}
+          />
 
           {/* AI Brief */}
           <div className="bg-pnc-gray-50 rounded-xl p-3">
@@ -322,7 +404,7 @@ export default function BankerCreditReview({ user }) {
   const pendingCount = leads.filter(l => l.status === 'pending').length
 
   return (
-    <div className="px-4 py-4">
+    <div className="px-4 py-4" data-walkthrough="banker-credit">
       {pendingCount > 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center gap-2.5 mb-4">
           <AlertCircle size={16} className="text-amber-600 shrink-0" />

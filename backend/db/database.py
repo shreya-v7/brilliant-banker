@@ -124,7 +124,7 @@ class BankerNote(Base):
 
 
 class Conversation(Base):
-    """Chat history — replaces MongoDB conversations collection."""
+    """Chat history  - replaces MongoDB conversations collection."""
     __tablename__ = "conversations"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))

@@ -30,6 +30,14 @@ function fmt(n) {
   if (n == null) return '--'
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
 }
+function revBracket(n) {
+  if (n == null) return '--'
+  if (n >= 1_000_000) return '$1M+'
+  if (n >= 500_000) return '$500K–$1M'
+  if (n >= 100_000) return '$100K–$500K'
+  if (n >= 50_000) return '$50K–$100K'
+  return '< $50K'
+}
 function fmtDate(iso) {
   if (!iso) return ''
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -170,8 +178,8 @@ export default function BankerSMBProfile({ user }) {
       <div className="bg-white border-b border-pnc-gray-200 px-4 py-4 flex items-center gap-4">
         <StabilityRing value={profile.cash_stability} />
         <div className="flex-1">
-          <p className="text-pnc-gray-900 text-xl font-bold">{fmt(profile.annual_revenue)}</p>
-          <p className="text-pnc-gray-500 text-xs">Annual revenue</p>
+          <p className="text-pnc-gray-900 text-xl font-bold">{revBracket(profile.annual_revenue)}</p>
+          <p className="text-pnc-gray-500 text-xs">Revenue bracket</p>
           <div className="flex flex-wrap gap-1.5 mt-2">
             {profile.cash_stability >= 0.5 ? (
               <span className="flex items-center gap-1 text-[10px] font-semibold text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
@@ -214,8 +222,8 @@ export default function BankerSMBProfile({ user }) {
         {tab === 'Overview' && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
-              <StatCard icon={DollarSign} label="Annual Revenue" value={fmt(profile.annual_revenue)} color="text-green-600" />
-              <StatCard icon={DollarSign} label="Monthly Avg" value={fmt(profile.avg_monthly_revenue)} color="text-blue-600" />
+              <StatCard icon={DollarSign} label="Revenue Bracket" value={revBracket(profile.annual_revenue)} color="text-green-600" />
+              <StatCard icon={DollarSign} label="Monthly Tier" value={revBracket(profile.avg_monthly_revenue)} color="text-blue-600" />
               <StatCard icon={TrendingUp} label="Cash Stability" value={`${(profile.cash_stability * 100).toFixed(0)}%`} color="text-amber-600" />
               <StatCard icon={ShieldCheck} label="Payment History" value={`${(profile.payment_history * 100).toFixed(0)}%`} color="text-purple-600" />
             </div>

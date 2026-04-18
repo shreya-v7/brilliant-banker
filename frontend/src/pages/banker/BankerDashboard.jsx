@@ -32,6 +32,14 @@ function fmt(n, short = false) {
   }
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
 }
+function revBracket(n) {
+  if (n == null) return '--'
+  if (n >= 1_000_000) return '$1M+'
+  if (n >= 500_000) return '$500K–$1M'
+  if (n >= 100_000) return '$100K–$500K'
+  if (n >= 50_000) return '$50K–$100K'
+  return '< $50K'
+}
 function fmtDate(iso) {
   if (!iso) return ''
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -255,16 +263,16 @@ export default function BankerDashboard({ user }) {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <MetricCard
               icon={DollarSign}
-              label="Total Portfolio Revenue"
-              value={fmt(totalRevenue, true)}
+              label="Portfolio Revenue Tier"
+              value={revBracket(totalRevenue)}
               sub={`${smbs.length} active clients`}
               color="bg-green-500"
               sparkData={revTrend}
             />
             <MetricCard
               icon={BarChart3}
-              label="Monthly Avg Revenue"
-              value={fmt(totalMonthly, true)}
+              label="Avg Monthly Tier"
+              value={revBracket(totalMonthly)}
               sub="across all clients"
               color="bg-blue-500"
               trend={8}
@@ -353,7 +361,7 @@ export default function BankerDashboard({ user }) {
         </div>
 
         {/* ── Priority Queue ── */}
-        <div>
+        <div data-walkthrough="banker-queue">
           <SectionHeader title="Priority Queue" action={leads.length > 0 ? 'Act Now →' : undefined} onAction={() => navigate('/banker/credit')} />
           {loading ? (
             <div className="space-y-2">
@@ -473,8 +481,8 @@ export default function BankerDashboard({ user }) {
                   <p className="text-pnc-gray-500 text-[10px]">{smb.business_type}</p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-pnc-gray-900 text-xs font-bold">{fmt(smb.annual_revenue, true)}</p>
-                  <p className="text-pnc-gray-400 text-[10px]">{fmt(smb.avg_monthly_revenue, true)}/mo</p>
+                  <p className="text-pnc-gray-900 text-xs font-bold">{revBracket(smb.annual_revenue)}</p>
+                  <p className="text-pnc-gray-400 text-[10px]">annual</p>
                 </div>
                 <ChevronRight size={12} className="text-pnc-gray-300 shrink-0" />
               </button>
@@ -501,7 +509,7 @@ export default function BankerDashboard({ user }) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-pnc-gray-900 text-sm font-semibold truncate">{smb.name}</p>
-                    <p className="text-pnc-gray-500 text-xs">{smb.business_type} · {fmt(smb.annual_revenue, true)}/yr</p>
+                    <p className="text-pnc-gray-500 text-xs">{smb.business_type} · {revBracket(smb.annual_revenue)}</p>
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">
                     <span className="text-red-600 text-sm font-bold">{pct(smb.cash_stability)}</span>
@@ -577,7 +585,7 @@ export default function BankerDashboard({ user }) {
               </div>
             </button>
             <button
-              onClick={() => navigate('/banker/clients')}
+              onClick={() => navigate('/banker/clients', { state: { filter: 'risk' } })}
               className="flex flex-col items-center gap-2 bg-white border border-red-100 rounded-2xl p-4 active:bg-red-50 col-span-1"
             >
               <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">

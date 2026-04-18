@@ -41,6 +41,15 @@ async def subscribe_events() -> AsyncGenerator[dict[str, Any], None]:
 
 # ── Pre-built event constructors ──────────────────────────────────────────────
 
+INTENT_LABELS = {
+    "cash_flow_query": "Cash Flow",
+    "credit_prequal_request": "Credit Request",
+    "faq_question": "General FAQ",
+    "escalate_to_banker": "RM Escalation",
+    "general_chat": "General",
+}
+
+
 def chat_highlight_event(
     smb_id: str,
     smb_name: str,
@@ -51,16 +60,21 @@ def chat_highlight_event(
     requested_amount: int | None = None,
     ticket_number: str | None = None,
     rm_name: str | None = None,
+    topic_summary: str | None = None,
+    user_message: str | None = None,
 ) -> dict[str, Any]:
     event = {
         "event_type": "chat_highlight",
         "smb_id": smb_id,
         "smb_name": smb_name,
         "intent": intent,
+        "intent_label": INTENT_LABELS.get(intent, intent),
         "highlight": highlight,
         "escalated": escalated,
         "urgency": urgency,
         "requested_amount": requested_amount,
+        "topic_summary": topic_summary or highlight,
+        "user_message_preview": (user_message or "")[:120],
     }
     if ticket_number:
         event["ticket_number"] = ticket_number

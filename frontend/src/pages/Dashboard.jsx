@@ -15,6 +15,8 @@ import {
   Zap,
   ChevronRight,
   AlertTriangle,
+  FileText,
+  Sparkles,
 } from 'lucide-react'
 import { getTransactions, getSMBEscalations } from '../api'
 
@@ -34,10 +36,10 @@ const CATEGORY_ICONS = {
 }
 
 const QUICK_ACTIONS = [
-  { label: 'Transfer', icon: Send,     color: 'bg-blue-50 text-blue-600' },
-  { label: 'Pay Bills', icon: Receipt, color: 'bg-green-50 text-green-600' },
-  { label: 'Deposit',  icon: Wallet,   color: 'bg-purple-50 text-purple-600' },
-  { label: 'Credit',   icon: CreditCard, color: 'bg-amber-50 text-amber-600' },
+  { label: 'Transfer', icon: Send,     color: 'bg-blue-50 text-blue-600', path: '/business/chat', prompt: 'I need to transfer funds' },
+  { label: 'Pay Bills', icon: Receipt, color: 'bg-green-50 text-green-600', path: '/business/chat', prompt: 'Help me pay a bill' },
+  { label: 'Deposit',  icon: Wallet,   color: 'bg-purple-50 text-purple-600', path: '/business/chat', prompt: 'How do I make a deposit?' },
+  { label: 'Credit',   icon: CreditCard, color: 'bg-amber-50 text-amber-600', path: '/business/forms' },
 ]
 
 function fmt(n) {
@@ -78,7 +80,7 @@ export default function Dashboard({ user }) {
   const latestDecision = escalations.find(e => e.status === 'approved' || e.status === 'declined' || e.status === 'referred')
 
   return (
-    <div className="pb-4">
+    <div className="pb-4" data-walkthrough="smb-dashboard">
       {/* Balance cards */}
       <div className="bg-pnc-navy px-4 pb-6 pt-2 -mt-[1px]">
         <div className="bg-white/10 backdrop-blur rounded-2xl p-4">
@@ -109,11 +111,45 @@ export default function Dashboard({ user }) {
         </div>
       </div>
 
+      {/* Proactive AI alert */}
+      {net30 < 0 && (
+        <div className="px-4 mt-4">
+          <div className="bg-gradient-to-r from-red-50 to-amber-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
+            <div className="w-9 h-9 rounded-full bg-red-100 flex items-center justify-center shrink-0 mt-0.5">
+              <Sparkles size={16} className="text-red-600" />
+            </div>
+            <div className="flex-1">
+              <p className="text-red-800 text-xs font-bold uppercase tracking-wide">AI Alert</p>
+              <p className="text-red-900 text-sm font-semibold mt-0.5">
+                Cash flow dip detected
+              </p>
+              <p className="text-red-700 text-xs mt-1 leading-relaxed">
+                Based on your recent transactions, your balance may drop by {fmt(Math.abs(net30))} this month.
+                Tap below for a full forecast and options.
+              </p>
+              <button
+                onClick={() => navigate('/business/chat', { state: { demoPrompt: "What's my cash flow forecast?", demoAutoSend: true } })}
+                className="mt-2.5 flex items-center gap-1.5 text-red-700 text-xs font-semibold
+                           active:opacity-70 transition-opacity"
+              >
+                <MessageCircle size={13} />
+                Ask Brilliant Banker
+                <ChevronRight size={13} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Quick actions */}
       <div className="px-4 pt-5">
         <div className="flex items-center justify-between gap-3">
-          {QUICK_ACTIONS.map(({ label, icon: Icon, color }) => (
-            <button key={label} className="flex-1 flex flex-col items-center gap-1.5 py-3">
+          {QUICK_ACTIONS.map(({ label, icon: Icon, color, path, prompt }) => (
+            <button
+              key={label}
+              onClick={() => navigate(path, prompt ? { state: { demoPrompt: prompt } } : undefined)}
+              className="flex-1 flex flex-col items-center gap-1.5 py-3 active:opacity-70 transition-opacity"
+            >
               <div className={`w-12 h-12 rounded-full flex items-center justify-center ${color}`}>
                 <Icon size={20} />
               </div>
@@ -159,7 +195,7 @@ export default function Dashboard({ user }) {
                 Your {fmt(pendingEscalation.requested_amount)} request is pending RM review.
               </p>
             </div>
-            <button onClick={() => navigate('/activity')} className="text-amber-700 shrink-0">
+            <button onClick={() => navigate('/business/activity')} className="text-amber-700 shrink-0">
               <ChevronRight size={18} />
             </button>
           </div>
@@ -169,7 +205,7 @@ export default function Dashboard({ user }) {
       {/* AI assistant card */}
       <div className="px-4 mt-4">
         <button
-          onClick={() => navigate('/chat')}
+          onClick={() => navigate('/business/chat')}
           className="w-full bg-gradient-to-r from-pnc-orange to-pnc-orange-dark rounded-2xl p-4 text-left
                      active:opacity-90 transition-opacity"
         >
@@ -182,6 +218,31 @@ export default function Dashboard({ user }) {
               <p className="text-white/80 text-xs mt-1 leading-relaxed">
                 Check cash flow, explore credit options, or get answers about your account.
               </p>
+            </div>
+          </div>
+        </button>
+      </div>
+
+      {/* Forms card */}
+      <div className="px-4 mt-3">
+        <button
+          onClick={() => navigate('/business/forms')}
+          className="w-full bg-white border border-pnc-gray-200 rounded-2xl p-4 text-left
+                     active:bg-pnc-gray-50 hover:border-pnc-gray-300 transition-all"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center shrink-0">
+              <FileText size={20} className="text-blue-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-pnc-gray-900 font-semibold text-sm">Apply for Credit & Loans</p>
+              <p className="text-pnc-gray-500 text-xs mt-0.5">
+                Auto-fill PNC business forms from your profile
+              </p>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <Sparkles size={12} className="text-pnc-orange" />
+              <ChevronRight size={16} className="text-pnc-gray-400" />
             </div>
           </div>
         </button>

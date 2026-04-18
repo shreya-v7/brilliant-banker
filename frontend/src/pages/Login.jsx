@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate, Link } from 'react-router-dom'
 import { getUsers, getBankers, login, bankerLogin } from '../api'
 import {
   Building2,
@@ -14,13 +15,15 @@ import {
   BarChart3,
 } from 'lucide-react'
 
-export default function Login({ onLogin, onShowMarketing }) {
-  const [mode, setMode] = useState(null) // null | 'smb' | 'banker'
+export default function Login({ onLogin, onShowMarketing, onShowScene, defaultMode }) {
+  const navigate = useNavigate()
+  const [mode, setMode] = useState(defaultMode || null) // null | 'smb' | 'banker'
   const [users, setUsers] = useState([])
   const [bankers, setBankers] = useState([])
   const [loading, setLoading] = useState(true)
   const [loggingIn, setLoggingIn] = useState(null)
   const [error, setError] = useState(null)
+  const [signInHint, setSignInHint] = useState(false)
 
   useEffect(() => {
     Promise.all([
@@ -57,11 +60,6 @@ export default function Login({ onLogin, onShowMarketing }) {
     }
   }
 
-  const fmtRevenue = (n) =>
-    n >= 1_000_000
-      ? `$${(n / 1_000_000).toFixed(1)}M`
-      : `$${(n / 1_000).toFixed(0)}K`
-
   // ── ROLE PICKER (landing) ─────────────────────────────────
   if (!mode) {
     return (
@@ -74,15 +72,26 @@ export default function Login({ onLogin, onShowMarketing }) {
             </div>
             <span className="text-white font-bold text-base">Brilliant Banker</span>
           </div>
-          {onShowMarketing && (
-            <button
-              onClick={onShowMarketing}
-              className="text-white/60 text-sm font-medium hover:text-white transition-colors flex items-center gap-1"
-            >
-              Learn more
-              <ChevronRight size={14} />
-            </button>
-          )}
+          <div className="flex items-center gap-3">
+            {onShowScene && (
+              <button
+                onClick={onShowScene}
+                className="text-amber-400/80 text-sm font-medium hover:text-amber-400 transition-colors flex items-center gap-1"
+              >
+                Watch scene
+                <ChevronRight size={14} />
+              </button>
+            )}
+            {onShowMarketing && (
+              <button
+                onClick={onShowMarketing}
+                className="text-white/60 text-sm font-medium hover:text-white transition-colors flex items-center gap-1"
+              >
+                Learn more
+                <ChevronRight size={14} />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Center content */}
@@ -105,7 +114,7 @@ export default function Login({ onLogin, onShowMarketing }) {
           <div className="grid sm:grid-cols-2 gap-4 mt-10 w-full max-w-2xl">
             {/* SMB Card */}
             <button
-              onClick={() => setMode('smb')}
+              onClick={() => navigate('/business')}
               className="group bg-white/5 border border-white/10 rounded-2xl p-6 text-left
                          hover:bg-white/10 hover:border-pnc-orange/40 transition-all"
             >
@@ -139,7 +148,7 @@ export default function Login({ onLogin, onShowMarketing }) {
 
             {/* Banker Card */}
             <button
-              onClick={() => setMode('banker')}
+              onClick={() => navigate('/banker')}
               className="group bg-white/5 border border-white/10 rounded-2xl p-6 text-left
                          hover:bg-white/10 hover:border-white/30 transition-all"
             >
@@ -174,7 +183,13 @@ export default function Login({ onLogin, onShowMarketing }) {
         </div>
 
         {/* Footer */}
-        <div className="text-center pb-6">
+        <div className="text-center pb-6 space-y-2">
+          <Link
+            to="/links"
+            className="block text-pnc-orange/80 hover:text-pnc-orange text-xs font-medium transition-colors"
+          >
+            All screen URLs
+          </Link>
           <p className="text-white/20 text-xs">CSL Innovation Lab Prototype</p>
         </div>
       </div>
@@ -184,34 +199,35 @@ export default function Login({ onLogin, onShowMarketing }) {
   // ── SMB LOGIN ─────────────────────────────────────────────
   if (mode === 'smb') {
     return (
-      <div className="min-h-dvh bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
-        <div className="w-full sm:w-[390px] sm:min-h-[700px] sm:rounded-[2.5rem] sm:shadow-2xl
+      <div className="h-dvh flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
+        <div className="relative w-full sm:w-[390px] h-full sm:h-[844px] sm:rounded-[2.5rem] sm:shadow-2xl
                         sm:border-[6px] sm:border-slate-800 overflow-hidden bg-pnc-navy flex flex-col">
           {/* Phone notch */}
-          <div className="hidden sm:flex items-center justify-center pt-2 bg-pnc-navy">
+          <div className="hidden sm:flex items-center justify-center pt-2 bg-pnc-navy shrink-0">
             <div className="w-28 h-5 bg-black rounded-full" />
           </div>
 
-          <div className="flex-1 flex flex-col">
-            <div className="flex-1 flex flex-col items-center justify-center px-6 pt-10 pb-6">
-              <button
-                onClick={() => setMode(null)}
-                className="self-start text-white/50 flex items-center gap-1 text-sm mb-8
-                           hover:text-white transition-colors"
-              >
-                <ArrowLeft size={16} />
-                Back
-              </button>
-              <div className="w-16 h-16 rounded-2xl bg-white/10 flex items-center justify-center mb-5">
-                <Landmark size={32} className="text-pnc-orange" />
-              </div>
-              <h1 className="text-white text-xl font-bold">Brilliant Banker</h1>
-              <p className="text-white/50 text-xs mt-1.5">Mobile Banking App</p>
+          <div className="flex flex-col items-center px-6 pt-6 pb-3 shrink-0">
+            <button
+              onClick={() => navigate('/')}
+              className="self-start text-white/50 flex items-center gap-1 text-sm mb-4
+                         hover:text-white transition-colors"
+            >
+              <ArrowLeft size={16} />
+              Back
+            </button>
+            <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center mb-3">
+              <Landmark size={24} className="text-pnc-orange" />
             </div>
+            <h1 className="text-white text-lg font-bold">Brilliant Banker</h1>
+            <p className="text-white/50 text-[11px] mt-0.5">Mobile Banking App</p>
+          </div>
 
-            <div className="bg-white rounded-t-3xl px-5 pt-5 pb-6">
-              <h2 className="text-pnc-gray-900 text-base font-semibold mb-1">Sign in as demo business</h2>
-              <p className="text-pnc-gray-500 text-xs mb-4">Select a business profile to continue</p>
+          <div className="bg-white rounded-t-3xl flex-1 flex flex-col overflow-hidden">
+            <div className="flex-1 overflow-y-auto px-5 pt-5 pb-6">
+              {/* Login form (cosmetic) */}
+              <h2 className="text-pnc-gray-900 text-base font-semibold mb-1">Sign In</h2>
+              <p className="text-pnc-gray-500 text-xs mb-3">Enter your credentials or choose a demo profile</p>
 
               {error && (
                 <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3 mb-3">
@@ -219,39 +235,94 @@ export default function Login({ onLogin, onShowMarketing }) {
                 </div>
               )}
 
+              <div className="space-y-2.5 mb-4">
+                <div>
+                  <label className="text-pnc-gray-700 text-[11px] font-medium mb-1 block">Username</label>
+                  <input
+                    type="text"
+                    placeholder="Enter username"
+                    className="w-full bg-pnc-gray-50 border border-pnc-gray-200 rounded-xl px-3.5 py-2.5 text-sm
+                               text-pnc-gray-900 placeholder-pnc-gray-400 outline-none
+                               focus:border-pnc-orange/50 focus:ring-2 focus:ring-pnc-orange/10 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="text-pnc-gray-700 text-[11px] font-medium mb-1 block">Password</label>
+                  <input
+                    type="password"
+                    placeholder="Enter password"
+                    className="w-full bg-pnc-gray-50 border border-pnc-gray-200 rounded-xl px-3.5 py-2.5 text-sm
+                               text-pnc-gray-900 placeholder-pnc-gray-400 outline-none
+                               focus:border-pnc-orange/50 focus:ring-2 focus:ring-pnc-orange/10 transition-all"
+                  />
+                </div>
+                <button
+                  onClick={() => setSignInHint(true)}
+                  className="w-full bg-pnc-navy text-white text-sm font-semibold py-2.5 rounded-xl
+                             active:opacity-80 transition-opacity"
+                >
+                  Sign In
+                </button>
+                {signInHint && (
+                  <p className="text-pnc-orange text-[10px] text-center mt-1 animate-fade-up">
+                    This is a demo  - select a profile below to get started
+                  </p>
+                )}
+              </div>
+
+              {/* Divider */}
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex-1 h-px bg-pnc-gray-200" />
+                <span className="text-pnc-gray-400 text-[10px] font-medium uppercase tracking-wider">Demo Profiles</span>
+                <div className="flex-1 h-px bg-pnc-gray-200" />
+              </div>
+
+              {/* Demo profile picker */}
               {loading ? (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {[1, 2, 3].map(i => (
-                    <div key={i} className="h-16 bg-pnc-gray-100 rounded-xl animate-pulse" />
+                    <div key={i} className="h-14 bg-pnc-gray-100 rounded-xl animate-pulse" />
                   ))}
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {users.map((u) => (
-                    <button
-                      key={u.smb_id}
-                      onClick={() => handleSMBLogin(u.smb_id)}
-                      disabled={loggingIn !== null}
-                      className="w-full flex items-center gap-3 p-3 rounded-xl border border-pnc-gray-200
-                                 hover:border-pnc-orange/40 hover:bg-pnc-orange/[0.03] active:bg-pnc-orange/[0.06]
-                                 transition-all text-left disabled:opacity-50"
-                    >
-                      <div className="w-10 h-10 rounded-full bg-pnc-navy/5 flex items-center justify-center shrink-0">
-                        <Building2 size={18} className="text-pnc-navy" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-pnc-gray-900 text-sm font-semibold truncate">{u.name}</p>
-                        <p className="text-pnc-gray-500 text-[11px] mt-0.5">
-                          {u.business_type} &middot; {fmtRevenue(u.annual_revenue)}
-                        </p>
-                      </div>
-                      {loggingIn === u.smb_id ? (
-                        <div className="w-5 h-5 border-2 border-pnc-orange border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <ChevronRight size={16} className="text-pnc-gray-400 shrink-0" />
-                      )}
-                    </button>
-                  ))}
+                  {users.map((u) => {
+                    const isSceneChar = u.smb_id === '11111111-1111-1111-1111-111111111111'
+                      || u.smb_id === '22222222-2222-2222-2222-222222222222'
+                    return (
+                      <button
+                        key={u.smb_id}
+                        onClick={() => handleSMBLogin(u.smb_id)}
+                        disabled={loggingIn !== null}
+                        className={`w-full flex items-center gap-3 p-3 rounded-xl border
+                                   hover:border-pnc-orange/40 hover:bg-pnc-orange/[0.03] active:bg-pnc-orange/[0.06]
+                                   transition-all text-left disabled:opacity-50
+                                   ${isSceneChar ? 'border-amber-300 bg-amber-50/30' : 'border-pnc-gray-200'}`}
+                      >
+                        <div className="w-10 h-10 rounded-full bg-pnc-navy/5 flex items-center justify-center shrink-0">
+                          <Building2 size={18} className="text-pnc-navy" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-pnc-gray-900 text-sm font-semibold truncate">{u.name}</p>
+                            {isSceneChar && (
+                              <span className="text-[9px] font-bold text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded-full shrink-0">
+                                SKIT
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-pnc-gray-500 text-[11px] mt-0.5">
+                            {u.business_type}
+                          </p>
+                        </div>
+                        {loggingIn === u.smb_id ? (
+                          <div className="w-5 h-5 border-2 border-pnc-orange border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <ChevronRight size={16} className="text-pnc-gray-400 shrink-0" />
+                        )}
+                      </button>
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -268,7 +339,7 @@ export default function Login({ onLogin, onShowMarketing }) {
       <header className="bg-pnc-navy px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setMode(null)}
+            onClick={() => navigate('/')}
             className="text-white/50 p-1 hover:text-white transition-colors"
           >
             <ArrowLeft size={20} />
@@ -287,13 +358,13 @@ export default function Login({ onLogin, onShowMarketing }) {
 
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-md">
-          <div className="text-center mb-8">
+          <div className="text-center mb-6">
             <div className="w-16 h-16 rounded-2xl bg-pnc-navy/10 flex items-center justify-center mx-auto mb-4">
               <Monitor size={32} className="text-pnc-navy" />
             </div>
             <h1 className="text-pnc-gray-900 text-2xl font-black">RM Portal Login</h1>
             <p className="text-pnc-gray-500 text-sm mt-2">
-              Select your profile to access the Relationship Manager dashboard
+              Enter your credentials or choose a demo profile
             </p>
           </div>
 
@@ -302,6 +373,51 @@ export default function Login({ onLogin, onShowMarketing }) {
               {error}
             </div>
           )}
+
+          {/* Login form (cosmetic) */}
+          <div className="bg-white border border-pnc-gray-200 rounded-2xl p-5 mb-5">
+            <div className="space-y-3">
+              <div>
+                <label className="text-pnc-gray-700 text-xs font-medium mb-1 block">Username</label>
+                <input
+                  type="text"
+                  placeholder="Enter employee ID"
+                  className="w-full bg-pnc-gray-50 border border-pnc-gray-200 rounded-xl px-3.5 py-2.5 text-sm
+                             text-pnc-gray-900 placeholder-pnc-gray-400 outline-none
+                             focus:border-pnc-navy/50 focus:ring-2 focus:ring-pnc-navy/10 transition-all"
+                />
+              </div>
+              <div>
+                <label className="text-pnc-gray-700 text-xs font-medium mb-1 block">Password</label>
+                <input
+                  type="password"
+                  placeholder="Enter password"
+                  className="w-full bg-pnc-gray-50 border border-pnc-gray-200 rounded-xl px-3.5 py-2.5 text-sm
+                             text-pnc-gray-900 placeholder-pnc-gray-400 outline-none
+                             focus:border-pnc-navy/50 focus:ring-2 focus:ring-pnc-navy/10 transition-all"
+                />
+              </div>
+              <button
+                onClick={() => setSignInHint(true)}
+                className="w-full bg-pnc-navy text-white text-sm font-semibold py-2.5 rounded-xl
+                           active:opacity-80 transition-opacity"
+              >
+                Sign In
+              </button>
+              {signInHint && (
+                <p className="text-pnc-orange text-[10px] text-center mt-1 animate-fade-up">
+                  This is a demo  - select a profile below to get started
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div className="flex items-center gap-3 mb-5">
+            <div className="flex-1 h-px bg-pnc-gray-200" />
+            <span className="text-pnc-gray-400 text-[10px] font-medium uppercase tracking-wider">Demo Profiles</span>
+            <div className="flex-1 h-px bg-pnc-gray-200" />
+          </div>
 
           {loading ? (
             <div className="space-y-3">

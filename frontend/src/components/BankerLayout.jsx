@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import DemoGuide from './DemoGuide'
 import RMStreamFeed from './RMStreamFeed'
-import { Sparkles, Bell, Zap, Landmark, LayoutDashboard, Users, CreditCard, User, LogOut, ChevronRight } from 'lucide-react'
+import { Bell, Zap, Landmark, LayoutDashboard, Users, CreditCard, User, ChevronRight, Menu, X } from 'lucide-react'
 import { connectRMStream } from '../api'
 
 const NAV_ITEMS = [
@@ -15,8 +14,8 @@ const NAV_ITEMS = [
 export default function BankerLayout({ user, children }) {
   const { pathname } = useLocation()
   const navigate = useNavigate()
-  const [showDemo, setShowDemo] = useState(false)
   const [showFeed, setShowFeed] = useState(false)
+  const [showMobileNav, setShowMobileNav] = useState(false)
   const [unread, setUnread] = useState(0)
   const [events, setEvents] = useState([])
   const [toast, setToast] = useState(null)
@@ -111,14 +110,6 @@ export default function BankerLayout({ user, children }) {
               </span>
             )}
           </button>
-          <button
-            onClick={() => setShowDemo(true)}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
-                       text-white/50 hover:bg-white/5 hover:text-white/80 transition-all"
-          >
-            <Sparkles size={18} className="text-pnc-orange" />
-            Demo Guide
-          </button>
         </div>
       </aside>
 
@@ -127,12 +118,12 @@ export default function BankerLayout({ user, children }) {
         {/* Top bar */}
         <header className="bg-white border-b border-pnc-gray-200 px-6 py-3 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            {/* Mobile hamburger placeholder */}
-            <div className="lg:hidden flex items-center gap-2 mr-2">
-              <div className="w-8 h-8 rounded-lg bg-pnc-navy flex items-center justify-center">
-                <Landmark size={16} className="text-pnc-orange" />
-              </div>
-            </div>
+            <button
+              onClick={() => setShowMobileNav(true)}
+              className="lg:hidden w-8 h-8 rounded-lg bg-pnc-navy flex items-center justify-center mr-2"
+            >
+              <Menu size={16} className="text-pnc-orange" />
+            </button>
             <div>
               <h1 className="text-pnc-gray-900 text-lg font-bold">{currentTitle}</h1>
               {pathname === '/banker' && (
@@ -202,6 +193,70 @@ export default function BankerLayout({ user, children }) {
         </nav>
       </div>
 
+      {/* Mobile nav drawer */}
+      {showMobileNav && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowMobileNav(false)} />
+          <aside className="relative w-72 h-full bg-pnc-navy flex flex-col animate-fade-up">
+            <div className="px-5 pt-6 pb-4 flex items-center justify-between border-b border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-pnc-orange/20 flex items-center justify-center">
+                  <Landmark size={20} className="text-pnc-orange" />
+                </div>
+                <p className="text-white font-bold text-sm">Brilliant Banker</p>
+              </div>
+              <button onClick={() => setShowMobileNav(false)} className="text-white/50">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="px-5 py-4 border-b border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-pnc-orange flex items-center justify-center">
+                  <span className="text-white text-sm font-bold">
+                    {user.name.split(' ').map(n => n[0]).join('')}
+                  </span>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-white text-sm font-semibold truncate">{user.name}</p>
+                  <p className="text-white/50 text-[11px] truncate">{user.title}</p>
+                </div>
+              </div>
+            </div>
+            <nav className="flex-1 px-3 py-4 space-y-1">
+              {NAV_ITEMS.map(({ path, icon: Icon, label }) => {
+                const active = pathname === path || (path !== '/banker' && pathname.startsWith(path + '/'))
+                return (
+                  <button
+                    key={path}
+                    onClick={() => { navigate(path); setShowMobileNav(false) }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                      active ? 'bg-white/10 text-white' : 'text-white/50'
+                    }`}
+                  >
+                    <Icon size={18} />
+                    {label}
+                  </button>
+                )
+              })}
+            </nav>
+            <div className="px-3 pb-5 space-y-2">
+              <button
+                onClick={() => { handleOpenFeed(); setShowMobileNav(false) }}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-white/50"
+              >
+                <Bell size={18} />
+                Live Feed
+                {unread > 0 && (
+                  <span className="ml-auto min-w-[20px] h-5 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full px-1.5">
+                    {unread > 9 ? '9+' : unread}
+                  </span>
+                )}
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
+
       {/* Toast notification */}
       {toast && !showFeed && (
         <div
@@ -234,10 +289,6 @@ export default function BankerLayout({ user, children }) {
             <ChevronRight size={16} className="text-pnc-gray-400 shrink-0 mt-1" />
           </div>
         </div>
-      )}
-
-      {showDemo && (
-        <DemoGuide userRole="banker" onClose={() => setShowDemo(false)} />
       )}
 
       <RMStreamFeed isOpen={showFeed} onClose={() => setShowFeed(false)} events={events} />

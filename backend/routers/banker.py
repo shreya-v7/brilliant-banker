@@ -16,6 +16,76 @@ from backend.models.schemas import (
     BankerNoteOut,
     BankerNoteRequest,
 )
+
+
+def _compute_credit_factors(smb: SMB, requested_amount: int | None = None) -> tuple[list[dict], list[str]]:
+    """Compute transparent credit scoring factors from SMB profile."""
+    cash_stability_score = smb.cash_stability
+    payment_history_score = smb.payment_history
+    revenue_factor = min(smb.avg_monthly_revenue / 100_000, 1.0)
+
+    cash_weight, payment_weight, revenue_weight = 0.35, 0.40, 0.25
+    cash_threshold, payment_threshold, revenue_threshold = 0.50, 0.70, 0.30
+
+    composite = (
+        cash_stability_score * cash_weight
+        + payment_history_score * payment_weight
+        + revenue_factor * revenue_weight
+    )
+    max_amount = int(smb.avg_monthly_revenue * 3 * composite)
+
+    factors = [
+        {
+            "name": "Cash Stability",
+            "score": round(cash_stability_score, 2),
+            "weight": cash_weight,
+            "weighted_score": round(cash_stability_score * cash_weight, 3),
+            "threshold": cash_threshold,
+            "passed": cash_stability_score >= cash_threshold,
+            "detail": (
+                f"{'Stable' if cash_stability_score >= 0.7 else 'Moderate' if cash_stability_score >= 0.5 else 'Volatile'} "
+                f"cash flow pattern over trailing 12 months"
+            ),
+        },
+        {
+            "name": "Payment History",
+            "score": round(payment_history_score, 2),
+            "weight": payment_weight,
+            "weighted_score": round(payment_history_score * payment_weight, 3),
+            "threshold": payment_threshold,
+            "passed": payment_history_score >= payment_threshold,
+            "detail": (
+                f"{int(payment_history_score * 100)}% on-time payments  - "
+                f"{'strong' if payment_history_score >= 0.85 else 'adequate' if payment_history_score >= 0.7 else 'needs improvement'}"
+            ),
+        },
+        {
+            "name": "Revenue Capacity",
+            "score": round(revenue_factor, 2),
+            "weight": revenue_weight,
+            "weighted_score": round(revenue_factor * revenue_weight, 3),
+            "threshold": revenue_threshold,
+            "passed": revenue_factor >= revenue_threshold,
+            "detail": (
+                f"Monthly revenue {'supports' if revenue_factor >= 0.5 else 'marginally covers' if revenue_factor >= 0.3 else 'insufficient for'} "
+                f"requested debt service"
+            ),
+        },
+    ]
+
+    decline_reasons = []
+    if composite < 0.55:
+        for f in factors:
+            if not f["passed"]:
+                decline_reasons.append(
+                    f"{f['name']}: scored {f['score']:.0%}, required {f['threshold']:.0%}. {f['detail']}."
+                )
+    if requested_amount and requested_amount > max_amount:
+        decline_reasons.append(
+            f"Requested ${requested_amount:,} exceeds pre-qualified maximum of ${max_amount:,}."
+        )
+
+    return factors, decline_reasons
 from backend.services.notify_service import draft_decision_notification
 from backend.services.stream_service import publish_event, decision_event
 
@@ -59,6 +129,11 @@ async def list_leads(
     for lead in leads:
         smb = lead.smb
         hex_part = str(lead.id).replace("-", "")[:6].upper()
+
+        factors, decline_reasons = [], []
+        if smb:
+            factors, decline_reasons = _compute_credit_factors(smb, lead.requested_amount)
+
         out.append(
             LeadOut(
                 id=lead.id,
@@ -73,6 +148,8 @@ async def list_leads(
                 reason=lead.reason,
                 created_at=lead.created_at,
                 assigned_rm_name=lead.assigned_banker.name if lead.assigned_banker else None,
+                factors=factors,
+                decline_reasons=decline_reasons,
             )
         )
     return out
@@ -106,12 +183,19 @@ async def create_decision(
     session.add(event)
     lead.status = body.action
 
+    # For declines, include transparent scoring reasons
+    decision_reason = lead.reason or body.banker_note
+    if body.action == "declined":
+        _, decline_reasons = _compute_credit_factors(smb, lead.requested_amount)
+        if decline_reasons:
+            decision_reason = " | ".join(decline_reasons)
+
     try:
         notification_text = await draft_decision_notification(
             action=body.action,
             smb_name=smb.name,
             amount=body.amount,
-            reason=lead.reason or body.banker_note,
+            reason=decision_reason,
         )
     except Exception:
         action_word = {"approved": "approved", "declined": "declined"}.get(body.action, "referred")

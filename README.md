@@ -6,11 +6,11 @@ AI-powered banking assistant that serves **two users simultaneously**: SMB owner
 
 ## The Problem
 
-PNC has **928K SMB client relationships** across 2,200 branches served by **596 bankers**. That's ~354 SMBs per branch manager — and only **35% get contacted in 2 years**. Hiring more bankers doesn't fix the math. Three consequences:
+PNC has **928K SMB client relationships** across 2,200 branches served by **596 bankers**. That's ~354 SMBs per branch manager  - and only **35% get contacted in 2 years**. Hiring more bankers doesn't fix the math. Three consequences:
 
-- **$66K fraud undetected** — Carroll case, 4 months before discovery
-- **Credit denied blindly** — Fox (800+ score) waited 4 weeks with no outreach
-- **Deposits leaving to Square** — Valentina, active customer, moving money to a competitor
+- **$66K fraud undetected**  - Carroll case, 4 months before discovery
+- **Credit denied blindly**  - Fox (800+ score) waited 4 weeks with no outreach
+- **Deposits leaving to Square**  - Valentina, active customer, moving money to a competitor
 
 **AI is the only solution that scales insight to 796K clients simultaneously while alerting humans when action is needed.**
 
@@ -84,7 +84,7 @@ PNC has **928K SMB client relationships** across 2,200 branches served by **596 
 
 ## What This Prototype Implements
 
-This repo is a **working proof-of-concept** that demonstrates the full user experience with simplified infrastructure. The AI pipeline, UI, and business logic are production-representative — only the data layer is simplified for zero-config deployment.
+This repo is a **working proof-of-concept** that demonstrates the full user experience with simplified infrastructure. The AI pipeline, UI, and business logic are production-representative  - only the data layer is simplified for zero-config deployment.
 
 ```
 React App → POST /api/chat → LangGraph Agent → Claude → Response
@@ -161,9 +161,9 @@ React App → POST /api/chat → LangGraph Agent → Claude → Response
 
 ## Pricing & Revenue Model
 
-### SMB Pricing — Designed for Small Business Affordability
+### SMB Pricing  - Designed for Small Business Affordability
 
-The AI advisor is bundled into PNC business accounts at tiers that make sense relative to what SMBs already pay for banking. No separate software purchase — it's a banking feature, not a SaaS product.
+The AI advisor is bundled into PNC business accounts at tiers that make sense relative to what SMBs already pay for banking. No separate software purchase  - it's a banking feature, not a SaaS product.
 
 | Tier | Who | Monthly Cost | What They Get |
 |------|-----|-------------|---------------|
@@ -173,9 +173,9 @@ The AI advisor is bundled into PNC business accounts at tiers that make sense re
 
 **Why this works for SMBs:**
 - **Free tier creates trust.** 928K clients can try the AI advisor at zero risk. The chat alone saves a phone call to the branch (avg $12/call for PNC, avg 15 min wait for client). Both sides win.
-- **$29/mo is cheaper than a bookkeeper.** A fractional bookkeeper costs $200-500/mo. For $29, an SMB gets real-time cash forecasting and credit readiness — the two things they'd actually call their accountant about.
+- **$29/mo is cheaper than a bookkeeper.** A fractional bookkeeper costs $200-500/mo. For $29, an SMB gets real-time cash forecasting and credit readiness  - the two things they'd actually call their accountant about.
 - **$79/mo replaces a financial advisor call.** Small business financial advisory starts at $150-300/hr. The Advisor tier provides always-on monitoring that a quarterly advisor meeting never could.
-- **Balance requirements align incentives.** Higher tiers require keeping money at PNC — deeper deposits fund PNC's lending, and the SMB gets smarter tools in return.
+- **Balance requirements align incentives.** Higher tiers require keeping money at PNC  - deeper deposits fund PNC's lending, and the SMB gets smarter tools in return.
 
 ### What the SMB Gets Back (ROI)
 
@@ -221,7 +221,7 @@ The AI advisor is bundled into PNC business accounts at tiers that make sense re
 
 | Competitor | What they charge SMBs | What Brilliant Banker does better |
 |-----------|----------------------|----------------------------------|
-| QuickBooks Cash Flow | $30/mo (standalone tool) | Embedded in banking — no separate login, real transaction data, not manual entry |
+| QuickBooks Cash Flow | $30/mo (standalone tool) | Embedded in banking  - no separate login, real transaction data, not manual entry |
 | Nav.ai (credit monitoring) | $20-40/mo | PNC has the actual underwriting data. Pre-qual here means something. |
 | Mercury AI | Free (but requires switching banks) | No switching cost. Works inside PNC where the money already is. |
 | Brex AI | Enterprise only ($0 for startups, $12/user otherwise) | Available to all 928K SMBs, not just tech startups. Includes human banker bridge. |
@@ -238,7 +238,7 @@ The AI advisor is bundled into PNC business accounts at tiers that make sense re
 | **Login** | Role picker (Business Owner vs PNC Banker), then profile selector |
 | **Dashboard** | Balances, 30-day cash flow, recent transactions, AI assistant card |
 | **Chat** | AI chatbot with typing indicator, intent badges, suggested prompts, RM card on escalation |
-| **Activity** | Track credit requests — filter by status, expand for details, see RM notifications |
+| **Activity** | Track credit requests  - filter by status, expand for details, see RM notifications |
 | **Profile** | Business details, financial stats, AI business brief |
 
 ### Banker / RM (desktop)
@@ -257,7 +257,7 @@ The AI advisor is bundled into PNC business accounts at tiers that make sense re
 ```bash
 # 1. Clone and configure
 cp .env.example .env
-# Edit .env — add your ANTHROPIC_API_KEY
+# Edit .env  - add your ANTHROPIC_API_KEY
 
 # 2. Start backend
 cd backend
@@ -277,13 +277,13 @@ Visit **http://localhost:5173**. Demo data auto-seeds on first startup.
 
 ## Deploy to Railway
 
-Single service, zero database setup — just one env var.
+Single service, zero database setup  - just one env var.
 
 1. Go to [railway.app](https://railway.app) → create project → **"+ New"** → **"GitHub Repo"** → select this repo
 2. Railway detects `railway.json` and builds automatically
 3. Go to **Variables** tab → add `ANTHROPIC_API_KEY`
 4. Go to **Settings** → generate a public domain
-5. Visit your `https://*.up.railway.app` URL — auto-seeds demo data on first boot
+5. Visit your `https://*.up.railway.app` URL  - auto-seeds demo data on first boot
 
 **Cost:** Railway free tier + ~$0.02-0.05 per conversation in Anthropic API calls.
 
@@ -293,14 +293,14 @@ Single service, zero database setup — just one env var.
 
 ### End-to-End Story
 
-1. **SMB side** — Log in as Melissa Murphy (restaurant owner), open Chat, ask for a $35K credit line
-2. **AI escalates** — LangGraph detects amount > $10K, runs pre-qual, creates lead with urgency 0.85
-3. **Banker side** — Log in as Sarah Chen, see Melissa at #1 in Priority Queue
-4. **Review** — Open Credit Review, read AI brief, review playbook
-5. **Decide** — Approve with amount; Claude drafts approval notification
-6. **SMB sees result** — Melissa's Activity tab shows "approved" with notification text
+1. **SMB side**: Log in as **Maya Patel** (Pittsburgh floral studio; seasonal peaks, real transaction history in seed data). Open **Chat**, ask for a **$25K** credit line (matches the guided demo prompt).
+2. **AI escalates**: LangGraph runs pre-qual for amounts above the threshold, surfaces scored factors, creates a lead with urgency for the RM queue.
+3. **Banker side**: Log in as **Sarah Chen**; Maya’s request appears at the top of the **Priority Queue**.
+4. **Review**: Open **Credit Review**, read the AI brief, scorecard, and playbook (continuity for the “new banker every year” problem the skit calls out).
+5. **Decide**: Approve (or decline/refer); Claude drafts the notification.
+6. **SMB sees result**: Maya’s **Activity** tab updates in real time, addressing the skit’s “slow, vague no” pain with visible status.
 
-Tap the floating **Demo** button on any screen for a guided step-by-step walkthrough.
+Tap the floating **Demo** button on any screen for a guided step-by-step walkthrough tied to the **SMB Banking Pain Points** customer-discovery skit (Maya & Priya, Pittsburgh coffee shop).
 
 ---
 
@@ -358,8 +358,8 @@ brilliant-banker/
 
 - **PNC brand theme**: Navy (#002D5F) and orange (#E35205), mobile-first responsive layout
 - **Append-only audit trail**: `lead_events` table records every banker action
-- **All AI responses via Claude**: Chat replies, decision notifications, business briefs — no hardcoded strings
+- **All AI responses via Claude**: Chat replies, decision notifications, business briefs  - no hardcoded strings
 - **Auto-escalation**: Credit requests over $10K automatically create a banker lead
 - **Multi-turn context**: Last 10 messages provide conversational continuity
-- **Zero-config deployment**: SQLite + in-memory stores — no external databases needed for POC
+- **Zero-config deployment**: SQLite + in-memory stores  - no external databases needed for POC
 - **Real-time RM stream**: In-memory asyncio broadcast powers SSE so bankers see live client activity

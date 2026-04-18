@@ -47,12 +47,24 @@ class CashFlowForecast(BaseModel):
 # --- Credit pre-qualification ---
 
 
+class CreditFactor(BaseModel):
+    name: str
+    score: float
+    weight: float
+    weighted_score: float
+    threshold: float
+    passed: bool
+    detail: str
+
+
 class CreditPrequalResult(BaseModel):
     eligible: bool
     probability: float
     max_amount: int
     reason: str
     requested_amount: int
+    factors: list[CreditFactor] = Field(default_factory=list)
+    decline_reasons: list[str] = Field(default_factory=list)
 
 
 # --- FAQ ---
@@ -103,6 +115,8 @@ class LeadOut(BaseModel):
     reason: str | None = None
     created_at: datetime | None = None
     assigned_rm_name: str | None = None
+    factors: list[dict] = Field(default_factory=list)
+    decline_reasons: list[str] = Field(default_factory=list)
 
 
 class DecisionRequest(BaseModel):

@@ -9,6 +9,7 @@ from sqlalchemy import select
 from backend.db.database import Banker, Lead, SMB, async_session
 from backend.models.schemas import (
     CashFlowForecast,
+    CreditFactor,
     CreditPrequalResult,
     EscalationResult,
     FAQResult,
@@ -16,6 +17,9 @@ from backend.models.schemas import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Demo SMB: Maya Patel (floral) — Pittsburgh skit; tied to seeded declined lead in Activity.
+MAYA_SMB_ID = "11111111-1111-1111-1111-111111111111"
 
 FAQ_ENTRIES = [
     {
@@ -31,7 +35,7 @@ FAQ_ENTRIES = [
     {
         "keywords": ["deposit", "check", "mobile"],
         "question": "How do I deposit a check?",
-        "answer": "You can deposit checks using the PNC mobile app — just take a photo of the front and back. Deposits before 10 PM ET are usually available next business day.",
+        "answer": "You can deposit checks using the PNC mobile app  - just take a photo of the front and back. Deposits before 10 PM ET are usually available next business day.",
     },
     {
         "keywords": ["wire", "transfer", "send", "money"],
@@ -83,10 +87,10 @@ async def get_cash_flow_forecast(smb_id: str) -> dict[str, Any]:
     if recent_txns:
         actual_income = sum(t.amount for t in recent_txns if t.amount > 0)
         actual_expenses = abs(sum(t.amount for t in recent_txns if t.amount < 0))
-        projected_revenue = int(actual_income * stability)
-        projected_expenses = int(actual_expenses * 1.05)
+        projected_revenue = int(actual_income * (0.85 + stability * 0.15))
+        projected_expenses = int(actual_expenses * 1.02)
     else:
-        projected_revenue = int(monthly_rev * stability)
+        projected_revenue = int(monthly_rev * (0.85 + stability * 0.15))
         projected_expenses = int(monthly_rev * 0.72)
 
     projected_net = projected_revenue - projected_expenses
@@ -116,42 +120,112 @@ async def check_credit_prequal(smb_id: str, requested_amount: int = 50000) -> di
     if not smb:
         return {"error": f"SMB {smb_id} not found"}
 
-    score = (
-        smb.cash_stability * 0.35
-        + smb.payment_history * 0.40
-        + min(smb.avg_monthly_revenue / 100_000, 1.0) * 0.25
+    # Individual factor scores with thresholds
+    cash_stability_score = smb.cash_stability
+    payment_history_score = smb.payment_history
+    revenue_factor = min(smb.avg_monthly_revenue / 100_000, 1.0)
+
+    cash_weight, payment_weight, revenue_weight = 0.35, 0.40, 0.25
+    cash_threshold, payment_threshold, revenue_threshold = 0.50, 0.70, 0.30
+
+    composite_score = (
+        cash_stability_score * cash_weight
+        + payment_history_score * payment_weight
+        + revenue_factor * revenue_weight
     )
 
-    max_amount = int(smb.avg_monthly_revenue * 3 * score)
-    eligible = score >= 0.55 and requested_amount <= max_amount
+    max_amount = int(smb.avg_monthly_revenue * 1.5 * composite_score)
+    eligible = composite_score >= 0.55 and requested_amount <= max_amount
 
+    factors = [
+        CreditFactor(
+            name="Cash Stability",
+            score=round(cash_stability_score, 2),
+            weight=cash_weight,
+            weighted_score=round(cash_stability_score * cash_weight, 3),
+            threshold=cash_threshold,
+            passed=cash_stability_score >= cash_threshold,
+            detail=f"{'Stable' if cash_stability_score >= 0.7 else 'Moderate' if cash_stability_score >= 0.5 else 'Volatile'} cash flow pattern over trailing 12 months",
+        ),
+        CreditFactor(
+            name="Payment History",
+            score=round(payment_history_score, 2),
+            weight=payment_weight,
+            weighted_score=round(payment_history_score * payment_weight, 3),
+            threshold=payment_threshold,
+            passed=payment_history_score >= payment_threshold,
+            detail=f"{int(payment_history_score * 100)}% on-time payments  - {'strong' if payment_history_score >= 0.85 else 'adequate' if payment_history_score >= 0.7 else 'needs improvement'}",
+        ),
+        CreditFactor(
+            name="Revenue Capacity",
+            score=round(revenue_factor, 2),
+            weight=revenue_weight,
+            weighted_score=round(revenue_factor * revenue_weight, 3),
+            threshold=revenue_threshold,
+            passed=revenue_factor >= revenue_threshold,
+            detail=f"Monthly revenue {'supports' if revenue_factor >= 0.5 else 'marginally covers' if revenue_factor >= 0.3 else 'insufficient for'} requested debt service",
+        ),
+    ]
+
+    decline_reasons = []
     if not eligible:
-        if score < 0.55:
-            reason = (
-                f"Combined credit score of {score:.2f} is below the 0.55 threshold. "
-                f"Cash stability ({smb.cash_stability}) and payment history "
-                f"({smb.payment_history}) need improvement."
+        if composite_score < 0.55:
+            for f in factors:
+                if not f.passed:
+                    decline_reasons.append(f"{f.name}: scored {f.score:.0%}, required {f.threshold:.0%}. {f.detail}.")
+            if not decline_reasons:
+                decline_reasons.append(
+                    f"Combined score of {composite_score:.2f} is below the 0.55 minimum threshold."
+                )
+        if requested_amount > max_amount:
+            decline_reasons.append(
+                f"Requested ${requested_amount:,} exceeds pre-qualified maximum of ${max_amount:,} "
+                f"(based on 3x avg monthly revenue × credit score)."
             )
-        else:
-            reason = (
-                f"Requested ${requested_amount:,} exceeds max pre-qualified amount of "
-                f"${max_amount:,} based on revenue and credit profile."
-            )
-    else:
+
+    if eligible:
         reason = (
-            f"Strong profile: cash stability {smb.cash_stability}, "
-            f"payment history {smb.payment_history}, "
-            f"avg monthly revenue ${smb.avg_monthly_revenue:,}."
+            f"Pre-qualified. Composite score {composite_score:.2f} (threshold: 0.55). "
+            f"Max approved amount: ${max_amount:,}."
         )
+    else:
+        reason = " ".join(decline_reasons)
 
     prequal = CreditPrequalResult(
         eligible=eligible,
-        probability=round(score, 2),
+        probability=round(composite_score, 2),
         max_amount=max_amount,
         reason=reason,
         requested_amount=requested_amount,
+        factors=factors,
+        decline_reasons=decline_reasons,
     )
-    return prequal.model_dump()
+    out = prequal.model_dump()
+
+    # Demo SMB (Pittsburgh skit): Maya's profile scores well on paper, but instant pre-qual must
+    # decline at typical request sizes — winter seasonal stress test / DSCR story. Escalation for
+    # amounts over $10K still creates an RM ticket in the agent graph.
+    if smb_id == MAYA_SMB_ID and requested_amount >= 5_000:
+        maya_decline = [
+            (
+                "Seasonal stress test: modeled January–February debt service coverage is about 1.09x, "
+                "below our 1.15x floor for new credit at this request size."
+            ),
+            (
+                "Floral revenue in the slow window runs well below your trailing-twelve average, "
+                "so the automated pre-qual cannot approve this structure right now."
+            ),
+        ]
+        out["eligible"] = False
+        out["decline_reasons"] = maya_decline
+        out["reason"] = " ".join(maya_decline)
+        out["max_amount"] = min(out.get("max_amount", 0), 12_000)
+        out["prior_underwriting_decision"] = (
+            "Activity already has underwriting's final letter on your $28,000 seasonal line request "
+            "(same seasonal stress story); use that letter for the full detail."
+        )
+
+    return out
 
 
 async def search_faq(query: str) -> dict[str, Any]:
@@ -198,24 +272,42 @@ async def escalate_to_banker(
     urgency_score = urgency_scores.get(urgency, 0.6)
 
     async with async_session() as session:
-        # Assign an RM (round-robin by least leads, or first available)
         banker_result = await session.execute(
             select(Banker).order_by(Banker.name).limit(1)
         )
         assigned_banker = banker_result.scalar_one_or_none()
+        banker_id = assigned_banker.id if assigned_banker else None
 
-        lead = Lead(
-            smb_id=smb_id,
-            assigned_banker_id=assigned_banker.id if assigned_banker else None,
-            status="pending",
-            urgency_score=urgency_score,
-            reason=reason,
-            requested_amount=requested_amount,
-            credit_score=credit_score,
+        existing = await session.execute(
+            select(Lead)
+            .where(Lead.smb_id == smb_id, Lead.status == "pending")
+            .order_by(Lead.created_at.desc())
+            .limit(1)
         )
-        session.add(lead)
-        await session.commit()
-        await session.refresh(lead)
+        lead = existing.scalar_one_or_none()
+
+        if lead:
+            lead.reason = reason
+            lead.requested_amount = requested_amount
+            lead.credit_score = credit_score
+            lead.urgency_score = urgency_score
+            if lead.assigned_banker_id is None and banker_id:
+                lead.assigned_banker_id = banker_id
+            await session.commit()
+            await session.refresh(lead)
+        else:
+            lead = Lead(
+                smb_id=smb_id,
+                assigned_banker_id=banker_id,
+                status="pending",
+                urgency_score=urgency_score,
+                reason=reason,
+                requested_amount=requested_amount,
+                credit_score=credit_score,
+            )
+            session.add(lead)
+            await session.commit()
+            await session.refresh(lead)
 
     ticket_number = _make_ticket_number(lead.id)
 

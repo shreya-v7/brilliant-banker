@@ -1,13 +1,13 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { getChatHistory, sendMessage } from '../api'
-import { ArrowLeft, Send, Bot, Sparkles, Mail, Phone, Ticket, User } from 'lucide-react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { getChatHistory, sendMessage, getBankers } from '../api'
+import { ArrowLeft, Send, Bot, Sparkles, Mail, Phone, Ticket, User, Headphones, AlertTriangle, X } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 
 const SUGGESTIONS = [
   "What's my cash flow forecast?",
   "Can I get a $25K credit line?",
   "What are your branch hours?",
-  "Connect me with a banker",
+  "How do I apply for an SBA loan?",
 ]
 
 function TypingIndicator() {
@@ -56,19 +56,39 @@ export default function Chat({ user }) {
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const [loaded, setLoaded] = useState(false)
+  const [showDisclaimer, setShowDisclaimer] = useState(true)
+  const [showRMPanel, setShowRMPanel] = useState(false)
+  const [defaultRM, setDefaultRM] = useState(null)
   const scrollRef = useRef(null)
   const inputRef = useRef(null)
   const navigate = useNavigate()
   const location = useLocation()
 
-  // Accept demo prompt injected from DemoGuide
+  useEffect(() => {
+    getBankers().then(bkrs => { if (bkrs.length) setDefaultRM(bkrs[0]) }).catch(() => {})
+  }, [])
+
+  const activeRM = useMemo(() => {
+    const fromMsg = [...messages].reverse().find(m => m.assigned_rm)
+    if (fromMsg?.assigned_rm) return fromMsg.assigned_rm
+    if (defaultRM) return { name: defaultRM.name, title: defaultRM.title, email: defaultRM.email }
+    return { name: 'Your RM', title: 'Relationship Manager', email: 'support@pnc.com' }
+  }, [messages, defaultRM])
+
+  // Accept demo prompt injected from DemoGuide (uses _ts to detect same-path navigations)
+  const demoTs = location.state?._ts
   useEffect(() => {
     if (location.state?.demoPrompt && loaded) {
-      setInput(location.state.demoPrompt)
-      // Clear the state so it doesn't re-trigger on re-render
-      navigate('/chat', { replace: true, state: {} })
+      const prompt = location.state.demoPrompt
+      const autoSend = location.state.demoAutoSend
+      navigate('/business/chat', { replace: true, state: {} })
+      if (autoSend) {
+        setTimeout(() => handleSend(prompt), 400)
+      } else {
+        setInput(prompt)
+      }
     }
-  }, [location.state?.demoPrompt, loaded])
+  }, [demoTs, loaded])
 
   useEffect(() => {
     getChatHistory(user.smb_id)
@@ -125,23 +145,104 @@ export default function Chat({ user }) {
   }
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="relative flex flex-col h-full bg-white">
       {/* Header */}
       <header className="bg-pnc-navy px-3 pt-3 pb-3 flex items-center gap-3 shrink-0">
-        <button onClick={() => navigate('/')} className="text-white p-1 -ml-1 active:opacity-70">
+        <button onClick={() => navigate('/business')} className="text-white p-1 -ml-1 active:opacity-70">
           <ArrowLeft size={22} />
         </button>
         <div className="w-9 h-9 rounded-full bg-pnc-orange/20 flex items-center justify-center">
           <Bot size={20} className="text-pnc-orange" />
         </div>
-        <div>
+        <div className="flex-1">
           <h1 className="text-white text-base font-semibold leading-tight">Brilliant Banker</h1>
           <p className="text-white/60 text-xs">AI Assistant</p>
         </div>
+        <button
+          onClick={() => setShowRMPanel(true)}
+          className="flex items-center gap-1.5 bg-white/10 text-white text-[11px] font-medium
+                     px-3 py-1.5 rounded-full active:bg-white/20 transition-colors border border-white/10"
+        >
+          <Headphones size={13} />
+          Talk to RM
+        </button>
       </header>
 
+      {/* AI Disclaimer */}
+      {showDisclaimer && (
+        <div className="bg-amber-50 border-b border-amber-200 px-3 py-2 flex items-start gap-2 shrink-0">
+          <AlertTriangle size={14} className="text-amber-600 shrink-0 mt-0.5" />
+          <p className="text-amber-800 text-[10px] leading-relaxed flex-1">
+            <span className="font-semibold">AI-generated responses.</span> This assistant provides
+            informational guidance only and does not constitute financial advice. Always verify
+            important details with your Relationship Manager before making financial decisions.
+          </p>
+          <button onClick={() => setShowDisclaimer(false)} className="text-amber-500 shrink-0 p-0.5 active:opacity-70">
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
+      {/* Connect to RM slide-up panel */}
+      {showRMPanel && (
+        <div className="absolute inset-0 z-20 flex items-end">
+          <div className="absolute inset-0 bg-black/30" onClick={() => setShowRMPanel(false)} />
+          <div className="relative w-full bg-white rounded-t-2xl p-5 pb-8 animate-fade-up z-10">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-pnc-gray-900 text-base font-bold">Connect with your RM</h3>
+              <button onClick={() => setShowRMPanel(false)} className="text-pnc-gray-400 active:opacity-70">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-pnc-navy flex items-center justify-center shrink-0">
+                <span className="text-white text-sm font-bold">
+                  {activeRM.name.split(' ').map(n => n[0]).join('')}
+                </span>
+              </div>
+              <div>
+                <p className="text-pnc-gray-900 text-sm font-semibold">{activeRM.name}</p>
+                <p className="text-pnc-gray-500 text-xs">{activeRM.title}</p>
+              </div>
+            </div>
+            <div className="space-y-2.5">
+              <button
+                onClick={() => {
+                  setShowRMPanel(false)
+                  handleSend('I\'d like to speak with my Relationship Manager')
+                }}
+                className="w-full flex items-center justify-center gap-2 bg-pnc-navy text-white text-sm
+                           font-semibold py-3 rounded-xl active:opacity-90 transition-opacity"
+              >
+                <Headphones size={16} />
+                Request a Callback
+              </button>
+              <a
+                href={`mailto:${activeRM.email}`}
+                className="w-full flex items-center justify-center gap-2 bg-white border border-pnc-gray-200
+                           text-pnc-gray-900 text-sm font-semibold py-3 rounded-xl active:bg-pnc-gray-50 transition-colors"
+              >
+                <Mail size={16} />
+                {activeRM.email}
+              </a>
+              <a
+                href="tel:+18005551234"
+                className="w-full flex items-center justify-center gap-2 bg-white border border-pnc-gray-200
+                           text-pnc-gray-900 text-sm font-semibold py-3 rounded-xl active:bg-pnc-gray-50 transition-colors"
+              >
+                <Phone size={16} />
+                (800) 555-1234
+              </a>
+            </div>
+            <p className="text-pnc-gray-400 text-[10px] text-center mt-4">
+              Available Mon-Fri 8am-6pm ET
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-4" data-walkthrough="smb-chat">
         {!loaded ? (
           <div className="flex items-center justify-center h-full">
             <div className="w-6 h-6 border-2 border-pnc-orange border-t-transparent rounded-full animate-spin" />
@@ -155,7 +256,7 @@ export default function Chat({ user }) {
               Hi {user.name.split(' ')[0]}!
             </h2>
             <p className="text-pnc-gray-500 text-sm mt-1.5 max-w-[260px]">
-              I can help you check cash flow, explore credit options, answer account questions, or connect you with your Relationship Manager.
+              I can help you check cash flow, explore credit options, and answer account questions.
             </p>
             <div className="mt-6 w-full space-y-2">
               {SUGGESTIONS.map((s) => (

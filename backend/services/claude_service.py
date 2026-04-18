@@ -69,7 +69,7 @@ async def compose_reply(message: str, tool_result: dict, history: list[dict]) ->
         prompt = history_text + "\n\n" + prompt
 
     return await call_claude(
-        system="You are Brilliant Banker. Reply in 1-2 plain sentences. No emoji. No jargon. Always say 'your Relationship Manager' or 'your RM' — never 'a banker'.",
+        system="You are Brilliant Banker. Reply in 1-2 plain sentences. No emoji. No jargon. Always say 'your Relationship Manager' or 'your RM'  - never 'a banker'.",
         user_message=prompt,
         max_tokens=200,
     )
@@ -84,6 +84,30 @@ async def generate_ai_brief(profile: dict) -> str:
         user_message=prompt,
         max_tokens=300,
     )
+
+
+async def check_credit_info_completeness(message: str, history: list[dict]) -> dict:
+    from backend.agent.prompts import CREDIT_INFO_CHECK_PROMPT
+    import json as _json
+
+    history_text = ""
+    if history:
+        history_text = "\n".join(
+            f"{m['role']}: {m['content']}" for m in history[-10:]
+        )
+
+    prompt = CREDIT_INFO_CHECK_PROMPT.format(history=history_text, message=message)
+    raw = await call_claude(
+        system="You are a credit analyst assistant. Return valid JSON only.",
+        user_message=prompt,
+        max_tokens=200,
+        temperature=0.0,
+    )
+
+    try:
+        return _json.loads(raw)
+    except (_json.JSONDecodeError, KeyError):
+        return {"all_complete": True, "missing_questions": []}
 
 
 async def generate_rm_highlight(

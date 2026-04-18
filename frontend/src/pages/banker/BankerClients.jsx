@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import {
   Search,
   ChevronRight,
@@ -14,6 +14,14 @@ function fmt(n) {
   if (n == null) return '--'
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`
   return `$${(n / 1_000).toFixed(0)}K`
+}
+function revBracket(n) {
+  if (n == null) return '--'
+  if (n >= 1_000_000) return '$1M+'
+  if (n >= 500_000) return '$500K–$1M'
+  if (n >= 100_000) return '$100K–$500K'
+  if (n >= 50_000) return '$50K–$100K'
+  return '< $50K'
 }
 
 function StabilityBar({ value }) {
@@ -49,10 +57,11 @@ const FILTERS = [
 
 export default function BankerClients() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [clients, setClients] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState('all')
+  const [filter, setFilter] = useState(location.state?.filter || 'all')
 
   useEffect(() => {
     getBankerPortfolio()
@@ -78,7 +87,7 @@ export default function BankerClients() {
     .sort((a, b) => a.cash_stability - b.cash_stability)
 
   return (
-    <div className="px-4 py-4">
+    <div className="px-4 py-4" data-walkthrough="banker-clients">
       {/* Search */}
       <div className="flex items-center gap-2 bg-pnc-gray-100 rounded-xl px-3 py-2.5 mb-4">
         <Search size={16} className="text-pnc-gray-400 shrink-0" />
@@ -137,7 +146,7 @@ export default function BankerClients() {
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <HealthIcon value={client.cash_stability} />
-                  <span className="text-pnc-gray-500 text-xs">{fmt(client.annual_revenue)}</span>
+                  <span className="text-pnc-gray-500 text-xs">{revBracket(client.annual_revenue)}</span>
                 </div>
                 <ChevronRight size={14} className="text-pnc-gray-400 shrink-0 mt-1" />
               </div>
@@ -153,8 +162,8 @@ export default function BankerClients() {
 
               <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-pnc-gray-100">
                 <div>
-                  <p className="text-pnc-gray-400 text-[10px] uppercase tracking-wide">Monthly Avg</p>
-                  <p className="text-pnc-gray-900 text-sm font-semibold">{fmt(client.avg_monthly_revenue)}</p>
+                  <p className="text-pnc-gray-400 text-[10px] uppercase tracking-wide">Monthly Tier</p>
+                  <p className="text-pnc-gray-900 text-sm font-semibold">{revBracket(client.avg_monthly_revenue)}</p>
                 </div>
                 <div>
                   <p className="text-pnc-gray-400 text-[10px] uppercase tracking-wide">Payment History</p>

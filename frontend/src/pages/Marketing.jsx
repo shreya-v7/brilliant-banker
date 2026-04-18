@@ -17,37 +17,58 @@ import {
   BarChart3,
   Brain,
   Smartphone,
-  AlertTriangle,
-  Phone,
 } from 'lucide-react'
 
 const STATS = [
-  { value: '73%', label: 'of SMBs say their bank doesn\'t understand their business', source: 'J.D. Power 2025' },
-  { value: '4.2 hrs', label: 'average wait for a credit decision on a small business loan', source: 'Federal Reserve' },
-  { value: '$150B', label: 'in SMB lending left on the table annually due to slow processes', source: 'McKinsey' },
-  { value: '62%', label: 'of RMs spend time on tasks AI could handle instantly', source: 'Accenture Banking' },
+  { value: '928K', label: 'SMB client relationships across PNC\'s national footprint' },
+  { value: '2,200', label: 'branches with dedicated business banking teams' },
+  { value: '$5.4B', label: 'addressable SMB revenue within PNC\'s existing base' },
+  { value: '596', label: 'business bankers serving the SMB portfolio today' },
 ]
 
-const PAIN_POINTS = [
+const PNC_STRENGTHS = [
   {
-    icon: Clock,
-    title: 'Weeks to hear back on credit',
-    description: 'SMBs apply for a credit line and wait 5-10 business days for a human to even look at it. By then, the opportunity is gone.',
+    icon: Shield,
+    title: 'Deep SMB relationships',
+    description: 'PNC already serves 928K SMB clients with dedicated relationship managers, branch infrastructure, and a trusted brand built over decades.',
   },
   {
-    icon: AlertTriangle,
-    title: 'RMs are buried in paperwork',
-    description: 'Relationship Managers juggle 200+ clients. Most of their day is spent on routine queries, not strategic advising.',
+    icon: CreditCard,
+    title: 'Full product suite',
+    description: 'Business checking, credit lines, SBA loans, treasury management, merchant services. The product shelf is already built.',
   },
   {
     icon: Users,
-    title: 'No personalization at scale',
-    description: 'Every client gets the same generic experience. Cash flow patterns, seasonal risks, and growth signals go unnoticed.',
+    title: 'Experienced RM teams',
+    description: '596 business bankers with deep industry knowledge, local market expertise, and existing client relationships across every region.',
   },
   {
-    icon: Phone,
-    title: 'Communication is fragmented',
-    description: 'Clients call, email, visit branches. Nothing is connected. Context is lost between every interaction.',
+    icon: Landmark,
+    title: 'Regulatory and compliance foundation',
+    description: 'Established ECOA, OCC, and TCPA compliance frameworks. Audit infrastructure. Data governance already in place.',
+  },
+]
+
+const ADDS = [
+  {
+    icon: Clock,
+    title: 'Proactive outreach at scale',
+    description: 'Today, 35% of SMBs get contacted in 2 years. AI monitors all 928K clients and surfaces the ones who need attention right now.',
+  },
+  {
+    icon: Brain,
+    title: 'Instant credit pre-qualification',
+    description: 'Clients get a scored, data-backed answer in seconds instead of waiting days. RMs receive a pre-call brief before the phone even rings.',
+  },
+  {
+    icon: TrendingUp,
+    title: 'Cash flow intelligence',
+    description: 'Personalized 30-day forecasts built from real transaction data. Seasonal patterns, risk flags, and actionable insight, always on.',
+  },
+  {
+    icon: Zap,
+    title: 'Real-time RM feed',
+    description: 'Every client interaction streams to the RM dashboard live. No CRM digging. Context is never lost between banker transitions.',
   },
 ]
 
@@ -56,15 +77,15 @@ const FEATURES = [
     icon: Brain,
     tag: 'AI AGENT',
     title: 'LangGraph-Powered AI Assistant',
-    description: 'A multi-node AI pipeline that classifies intent, routes to the right tool, composes natural replies, and auto-escalates high-value requests — all in under 3 seconds.',
-    details: ['Intent classification with Claude', 'Cash flow forecasting from real transaction data', 'Credit pre-qualification with specific dollar amounts', 'Never makes up numbers — every figure comes from data'],
+    description: 'A multi-node AI pipeline that classifies intent, routes to the right tool, composes natural replies, and auto-escalates high-value requests  - all in under 3 seconds.',
+    details: ['Intent classification with Claude', 'Cash flow forecasting from real transaction data', 'Credit pre-qualification with specific dollar amounts', 'Never makes up numbers  - every figure comes from data'],
     color: 'pnc-orange',
   },
   {
     icon: Zap,
     tag: 'REAL-TIME STREAM',
     title: 'Live RM Event Feed',
-    description: 'Every client interaction streams to the RM dashboard in real-time via Redis pub/sub. No more checking CRM for updates — insights come to you.',
+    description: 'Every client interaction streams to the RM dashboard in real-time via Redis pub/sub. No more checking CRM for updates  - insights come to you.',
     details: ['Redis pub/sub event pipeline (Kafka-grade for SMB scale)', 'Server-Sent Events for zero-latency delivery', 'Urgency-tagged notifications with toast alerts', 'Claude-generated 1-line summaries per interaction'],
     color: 'pnc-navy',
   },
@@ -72,7 +93,7 @@ const FEATURES = [
     icon: Ticket,
     tag: 'TICKET SYSTEM',
     title: 'Instant Escalation & Ticketing',
-    description: 'When AI detects a human-touch moment, it creates a trackable ticket, assigns the client\'s RM, and shares their contact details — all within the chat.',
+    description: 'When AI detects a human-touch moment, it creates a trackable ticket, assigns the client\'s RM, and shares their contact details  - all within the chat.',
     details: ['Pattern detection for escalation intent', 'Auto-generated ticket numbers (TKT-XXXXXX)', 'RM assignment with name, title, and email', 'Visible on both client Activity and RM dashboard'],
     color: 'pnc-blue',
   },
@@ -88,7 +109,7 @@ const FEATURES = [
     icon: TrendingUp,
     tag: 'CASH FLOW',
     title: '30-Day Cash Flow Intelligence',
-    description: 'Forecasts built from actual transaction history — not generic formulas. Clients see projected revenue, expenses, and net position with risk flags.',
+    description: 'Forecasts built from actual transaction history  - not generic formulas. Clients see projected revenue, expenses, and net position with risk flags.',
     details: ['Queries last 30 days of real transactions', 'Adjusts for cash stability score', 'Flags high, medium, low risk automatically', 'Helps RMs proactively reach out before shortfalls'],
     color: 'pnc-navy',
   },
@@ -96,7 +117,7 @@ const FEATURES = [
     icon: Smartphone,
     tag: 'MOBILE-FIRST',
     title: 'PNC-Branded PWA Experience',
-    description: 'A mobile-first Progressive Web App with PNC brand colors, bottom navigation, and a native app feel — no App Store required.',
+    description: 'A mobile-first Progressive Web App with PNC brand colors, bottom navigation, and a native app feel  - no App Store required.',
     details: ['Dual interfaces: SMB client + RM dashboard', 'Chat with typing indicators and intent badges', 'Activity tracker with ticket status and RM info', 'Portfolio view, client profiles, and banker notes'],
     color: 'pnc-blue',
   },
@@ -173,7 +194,7 @@ const TESTIMONIALS = [
     initials: 'SC',
   },
   {
-    quote: 'The live feed changed everything. I used to check CRM 15 times a day. Now I see what my clients need the moment they ask — before they even finish the conversation.',
+    quote: 'The live feed changed everything. I used to check CRM 15 times a day. Now I see what my clients need the moment they ask  - before they even finish the conversation.',
     name: 'Jordan Patel',
     title: 'Senior RM, Mid-Atlantic',
     initials: 'JP',
@@ -261,15 +282,14 @@ export default function Marketing({ onBack }) {
           </div>
 
           <h1 className="text-white text-4xl sm:text-5xl lg:text-6xl font-black leading-[1.1] tracking-tight max-w-3xl mx-auto">
-            Your clients get answers in{' '}
-            <span className="text-pnc-orange">seconds</span>,{' '}
-            not days
+            Give every RM{' '}
+            <span className="text-pnc-orange">superpowers</span>
           </h1>
 
           <p className="text-white/70 text-lg sm:text-xl mt-6 max-w-2xl mx-auto leading-relaxed">
-            Brilliant Banker is the AI layer between your small business clients
-            and your Relationship Managers — turning every chat into a credit opportunity
-            and every RM into a portfolio strategist.
+            PNC already has the clients, the products, and the bankers.
+            Brilliant Banker adds the AI layer that turns 596 RMs into a team
+            that can proactively serve all 928K SMB relationships.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-10">
@@ -300,27 +320,54 @@ export default function Marketing({ onBack }) {
         </div>
       </section>
 
-      {/* ─── THE PROBLEM ────────────────────────────────────── */}
+      {/* ─── WHAT PNC ALREADY HAS ────────────────────────────── */}
       <section className="bg-pnc-gray-50 py-20">
         <div className="max-w-5xl mx-auto px-4">
           <div className="text-center mb-12">
-            <span className="text-pnc-orange text-xs font-bold tracking-widest">THE PROBLEM</span>
+            <span className="text-pnc-navy text-xs font-bold tracking-widest">THE FOUNDATION</span>
             <h2 className="text-pnc-gray-900 text-3xl sm:text-4xl font-black mt-3">
-              SMB banking is broken
+              What PNC already does well
             </h2>
             <p className="text-pnc-gray-500 text-base mt-3 max-w-xl mx-auto">
-              Small business owners need fast, personalized banking. What they get is
-              voicemail, generic advice, and weeks of waiting. Meanwhile, your RMs are drowning.
+              PNC has the infrastructure, the relationships, and the products.
+              Brilliant Banker doesn't replace any of it. It amplifies it.
             </p>
           </div>
 
           <div className="grid sm:grid-cols-2 gap-4">
-            {PAIN_POINTS.map((p, i) => {
+            {PNC_STRENGTHS.map((p, i) => {
               const Icon = p.icon
               return (
                 <div key={i} className="bg-white border border-pnc-gray-200 rounded-2xl p-6">
-                  <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center mb-4">
-                    <Icon size={20} className="text-red-500" />
+                  <div className="w-10 h-10 rounded-xl bg-pnc-navy/10 flex items-center justify-center mb-4">
+                    <Icon size={20} className="text-pnc-navy" />
+                  </div>
+                  <h3 className="text-pnc-gray-900 text-base font-bold">{p.title}</h3>
+                  <p className="text-pnc-gray-500 text-sm mt-2 leading-relaxed">{p.description}</p>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* What Brilliant Banker adds */}
+          <div className="text-center mt-16 mb-12">
+            <span className="text-pnc-orange text-xs font-bold tracking-widest">THE AI LAYER</span>
+            <h2 className="text-pnc-gray-900 text-3xl sm:text-4xl font-black mt-3">
+              What Brilliant Banker adds
+            </h2>
+            <p className="text-pnc-gray-500 text-base mt-3 max-w-xl mx-auto">
+              The math: 928K clients, 596 bankers. That's ~354 SMBs per manager.
+              AI is the only solution that scales insight to every client simultaneously.
+            </p>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            {ADDS.map((p, i) => {
+              const Icon = p.icon
+              return (
+                <div key={i} className="bg-white border border-pnc-orange/20 rounded-2xl p-6">
+                  <div className="w-10 h-10 rounded-xl bg-pnc-orange/10 flex items-center justify-center mb-4">
+                    <Icon size={20} className="text-pnc-orange" />
                   </div>
                   <h3 className="text-pnc-gray-900 text-base font-bold">{p.title}</h3>
                   <p className="text-pnc-gray-500 text-sm mt-2 leading-relaxed">{p.description}</p>
@@ -335,14 +382,13 @@ export default function Marketing({ onBack }) {
       <section className="py-20">
         <div className="max-w-5xl mx-auto px-4">
           <div className="text-center mb-6">
-            <span className="text-pnc-navy text-xs font-bold tracking-widest">THE SOLUTION</span>
+            <span className="text-pnc-navy text-xs font-bold tracking-widest">TWO SIDES, ONE PLATFORM</span>
             <h2 className="text-pnc-gray-900 text-3xl sm:text-4xl font-black mt-3">
-              What if every client interaction<br className="hidden sm:block" />
-              made your RMs{' '}<span className="text-pnc-orange">smarter</span>?
+              Built for both sides of the{' '}<span className="text-pnc-orange">relationship</span>
             </h2>
             <p className="text-pnc-gray-500 text-base mt-3 max-w-2xl mx-auto">
-              Brilliant Banker handles routine queries instantly, pre-qualifies credit in seconds,
-              and feeds your RMs real-time intelligence — so they only step in when it matters most.
+              Brilliant Banker serves SMB owners and RMs simultaneously. Clients get instant,
+              personalized answers. RMs get the context to act when it matters.
             </p>
           </div>
 
@@ -584,11 +630,14 @@ export default function Marketing({ onBack }) {
                       </li>
                     ))}
                   </ul>
-                  <button className={`w-full mt-6 py-3 rounded-xl text-sm font-bold transition-colors ${
-                    plan.highlight
-                      ? 'bg-pnc-orange text-white active:bg-pnc-orange-dark'
-                      : 'bg-pnc-navy text-white active:bg-pnc-navy-light'
-                  }`}>
+                  <button
+                    onClick={onBack}
+                    className={`w-full mt-6 py-3 rounded-xl text-sm font-bold transition-colors ${
+                      plan.highlight
+                        ? 'bg-pnc-orange text-white active:bg-pnc-orange-dark'
+                        : 'bg-pnc-navy text-white active:bg-pnc-navy-light'
+                    }`}
+                  >
                     {plan.cta}
                   </button>
                 </div>
@@ -602,11 +651,11 @@ export default function Marketing({ onBack }) {
       <section className="bg-gradient-to-r from-pnc-navy to-pnc-navy-light py-16">
         <div className="max-w-3xl mx-auto px-4 text-center">
           <h2 className="text-white text-3xl sm:text-4xl font-black">
-            Stop losing clients to slow banking
+            From 596 bankers to 928K conversations
           </h2>
           <p className="text-white/60 text-base mt-4 max-w-xl mx-auto">
-            Every hour without AI-assisted banking is an hour your competitors are winning SMB clients.
-            The demo is live. The code is real. See it for yourself.
+            PNC has the foundation. Brilliant Banker scales what your best RMs already do
+            to every client in the portfolio. The demo is live. The code is real.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-8">
             <button
@@ -616,12 +665,13 @@ export default function Marketing({ onBack }) {
             >
               Launch the demo
             </button>
-            <button
+            <a
+              href="mailto:demo@brilliantbanker.com?subject=Schedule%20a%20call"
               className="w-full sm:w-auto bg-white/10 text-white font-semibold px-8 py-3.5 rounded-xl
-                         border border-white/20 active:bg-white/20 transition-colors"
+                         border border-white/20 active:bg-white/20 transition-colors text-center"
             >
               Schedule a call
-            </button>
+            </a>
           </div>
         </div>
       </section>

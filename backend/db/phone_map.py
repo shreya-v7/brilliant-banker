@@ -1,6 +1,6 @@
 """
 In-memory key-value store replacing Redis.
-For a POC this is all we need — no external service required.
+For a POC this is all we need  - no external service required.
 """
 from __future__ import annotations
 

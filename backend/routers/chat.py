@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.agent.graph import run_agent
-from backend.db.conversations import get_history, save_message
+from backend.db.conversations import clear_conversations_for_smb, get_history, save_message
 from backend.db.database import SMB, Banker, get_session, async_session
 from backend.models.schemas import BankerOut, BankerLoginRequest
 from backend.services.claude_service import generate_rm_highlight
@@ -68,6 +68,12 @@ async def mock_login(
     smb = result.scalar_one_or_none()
     if not smb:
         raise HTTPException(status_code=404, detail="SMB not found")
+
+    # Fresh AI thread each time someone picks a demo profile (prototype behavior).
+    try:
+        await clear_conversations_for_smb(str(smb.id))
+    except Exception as e:
+        logger.warning("Could not clear chat for smb %s: %s", smb.id, e)
 
     return LoginResponse(
         smb_id=str(smb.id),
@@ -189,6 +195,29 @@ async def chat(body: ChatRequest):
             "medium" if intent in ("credit_prequal_request", "cash_flow_query") else "low"
         )
 
+        # Build a topic summary for the RM (not the full message, just context)
+        topic_parts = []
+        if intent == "credit_prequal_request":
+            amt = tool_result.get("requested_amount")
+            eligible = tool_result.get("eligible")
+            topic_parts.append(f"Credit inquiry: ${amt:,}" if amt else "Credit inquiry")
+            topic_parts.append("pre-qualified" if eligible else "not pre-qualified")
+        elif intent == "cash_flow_query":
+            net = tool_result.get("projected_net")
+            risk = tool_result.get("risk_flag", "")
+            topic_parts.append("Cash flow forecast requested")
+            if net is not None:
+                topic_parts.append(f"projected net {'positive' if net >= 0 else 'negative'}")
+            if risk:
+                topic_parts.append(f"risk: {risk}")
+        elif intent == "escalate_to_banker":
+            topic_parts.append("Requested to speak with RM directly")
+        elif intent == "faq_question":
+            topic_parts.append(f"FAQ: {tool_result.get('question', message[:60])}")
+        else:
+            topic_parts.append("General banking conversation")
+        topic_summary = "  - ".join(topic_parts)
+
         event = chat_highlight_event(
             smb_id=smb_id,
             smb_name=smb_name,
@@ -199,6 +228,8 @@ async def chat(body: ChatRequest):
             requested_amount=tool_result.get("requested_amount"),
             ticket_number=ticket_number,
             rm_name=assigned_rm.name if assigned_rm else None,
+            topic_summary=topic_summary,
+            user_message=message,
         )
         await publish_event(event)
     except Exception as e:
@@ -228,3 +259,9 @@ async def _resolve_smb_name(smb_id: str) -> str:
 async def chat_history(smb_id: str, limit: int = 50):
     messages = await get_history(smb_id, limit=limit)
     return [HistoryMessage(role=m["role"], content=m["content"]) for m in messages]
+
+
+@router.delete("/chat/{smb_id}/history", status_code=204)
+async def clear_chat_history(smb_id: str):
+    """Manual reset (e.g. curl) without restarting the server."""
+    await clear_conversations_for_smb(smb_id)
