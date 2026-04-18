@@ -21,6 +21,11 @@ logger = logging.getLogger(__name__)
 
 # Demo SMB: Maya Patel (floral) — Pittsburgh skit; tied to seeded declined lead in Activity.
 MAYA_SMB_ID = "11111111-1111-1111-1111-111111111111"
+# Priya Rao (dry cleaning) — second walkthrough SMB; equipment / cash-flow story.
+PRIYA_SMB_ID = "22222222-2222-2222-2222-222222222222"
+
+# Instant pre-qual must decline typical line requests for walkthrough cast (demo narrative).
+WALKTHROUGH_CREDIT_DENY_MIN = 3_000
 
 FAQ_ENTRIES = [
     {
@@ -181,7 +186,7 @@ async def check_credit_prequal(smb_id: str, requested_amount: int = 50000) -> di
         if requested_amount > max_amount:
             decline_reasons.append(
                 f"Requested ${requested_amount:,} exceeds pre-qualified maximum of ${max_amount:,} "
-                f"(based on 3x avg monthly revenue × credit score)."
+                f"(based on average monthly revenue × 1.5 × composite score, same as this demo calculator)."
             )
 
     if eligible:
@@ -203,10 +208,9 @@ async def check_credit_prequal(smb_id: str, requested_amount: int = 50000) -> di
     )
     out = prequal.model_dump()
 
-    # Demo SMB (Pittsburgh skit): Maya's profile scores well on paper, but instant pre-qual must
-    # decline at typical request sizes — winter seasonal stress test / DSCR story. Escalation for
-    # amounts over $10K still creates an RM ticket in the agent graph.
-    if smb_id == MAYA_SMB_ID and requested_amount >= 5_000:
+    # Walkthrough SMBs: profiles can score well on paper, but instant pre-qual declines typical line
+    # requests with bank-plausible reasons; RM follow-up carries the real conversation (see graph).
+    if smb_id == MAYA_SMB_ID and requested_amount >= WALKTHROUGH_CREDIT_DENY_MIN:
         maya_decline = [
             (
                 "Seasonal stress test: modeled January–February debt service coverage is about 1.09x, "
@@ -225,6 +229,27 @@ async def check_credit_prequal(smb_id: str, requested_amount: int = 50000) -> di
             "Activity already has underwriting's final letter on your $28,000 seasonal line request "
             "(same seasonal stress story); use that letter for the full detail."
         )
+        out["walkthrough_credit_denial"] = True
+
+    if smb_id == PRIYA_SMB_ID and requested_amount >= WALKTHROUGH_CREDIT_DENY_MIN:
+        priya_decline = [
+            (
+                "Equipment and layering risk: the recent commercial press purchase is still rolling "
+                "through your cash flow; adding a new unsecured line at this size would push modeled "
+                "coverage below policy for same-store dry cleaning deposits before we see a full quarter "
+                "of stabilized activity after that spend."
+            ),
+            (
+                "Week-to-week revenue swings (rush vs. slow periods) mean the automated check cannot "
+                "approve this structure without a Relationship Manager review of recent statements, "
+                "payroll timing, and how the new equipment affects your borrowing headroom."
+            ),
+        ]
+        out["eligible"] = False
+        out["decline_reasons"] = priya_decline
+        out["reason"] = " ".join(priya_decline)
+        out["max_amount"] = min(out.get("max_amount", 0), 10_000)
+        out["walkthrough_credit_denial"] = True
 
     return out
 
@@ -275,10 +300,19 @@ async def escalate_to_banker(
     await normalize_demo_leads()
 
     async with async_session() as session:
-        banker_result = await session.execute(
-            select(Banker).order_by(Banker.name).limit(1)
-        )
-        assigned_banker = banker_result.scalar_one_or_none()
+        smb_result = await session.execute(select(SMB).where(SMB.id == smb_id))
+        smb = smb_result.scalar_one_or_none()
+        assigned_banker = None
+        if smb and smb.assigned_banker_id:
+            banker_result = await session.execute(
+                select(Banker).where(Banker.id == smb.assigned_banker_id)
+            )
+            assigned_banker = banker_result.scalar_one_or_none()
+        if assigned_banker is None:
+            banker_result = await session.execute(
+                select(Banker).order_by(Banker.name).limit(1)
+            )
+            assigned_banker = banker_result.scalar_one_or_none()
         banker_id = assigned_banker.id if assigned_banker else None
 
         existing = await session.execute(

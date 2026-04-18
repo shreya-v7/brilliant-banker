@@ -156,8 +156,9 @@ export default function Login({ onLogin, onShowMarketing, onShowScene, defaultMo
               Walkthrough / Demo
             </button>
             <p className="text-white/45 text-[11px] text-center leading-snug">
-              Guided walkthrough: sign in as <span className="text-white/70 font-semibold">Maya Patel</span> only,
-              then use the floating Walkthrough on the home screen. Other demo profiles use the app without that tour.
+              Guided walkthrough: SMB as <span className="text-white/70 font-semibold">Maya or Priya</span>, RM as{' '}
+              <span className="text-white/70 font-semibold">Sarah Chen</span> only. User Testing lists other business
+              owners and several RMs (Marcus, Jordan, Elena, James); those never overlap with the walkthrough cast.
             </p>
           </div>
 

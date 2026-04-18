@@ -44,8 +44,15 @@ class SMB(Base):
     cash_stability = Column(Float, nullable=False)
     payment_history = Column(Float, nullable=False)
     phone = Column(String(20), unique=True, nullable=False)
+    assigned_banker_id = Column(String(36), ForeignKey("bankers.id"), nullable=True)
     created_at = Column(DateTime, server_default=func.now())
 
+    assigned_banker = relationship(
+        "Banker",
+        foreign_keys=[assigned_banker_id],
+        back_populates="portfolio_smbs",
+        lazy="selectin",
+    )
     leads = relationship("Lead", back_populates="smb", lazy="selectin")
     transactions = relationship("Transaction", back_populates="smb", lazy="selectin")
     banker_notes = relationship("BankerNote", back_populates="smb", lazy="selectin")
@@ -94,6 +101,12 @@ class Banker(Base):
     email = Column(String(200), unique=True, nullable=False)
     created_at = Column(DateTime, server_default=func.now())
 
+    portfolio_smbs = relationship(
+        "SMB",
+        back_populates="assigned_banker",
+        foreign_keys=[SMB.assigned_banker_id],
+        lazy="selectin",
+    )
     notes = relationship("BankerNote", back_populates="banker", lazy="selectin")
 
 
@@ -167,9 +180,23 @@ class SurveyAnswer(Base):
     survey = relationship("SurveyResponse", back_populates="answers")
 
 
+def _sqlite_add_smbs_assigned_banker_id(connection) -> None:
+    """Light migration for existing SQLite DBs created before assigned_banker_id."""
+    from sqlalchemy import inspect, text
+
+    try:
+        insp = inspect(connection)
+        cols = {c["name"] for c in insp.get_columns("smbs")}
+    except Exception:
+        return
+    if "assigned_banker_id" not in cols:
+        connection.execute(text("ALTER TABLE smbs ADD COLUMN assigned_banker_id VARCHAR(36)"))
+
+
 async def init_db() -> None:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(_sqlite_add_smbs_assigned_banker_id)
 
 
 async def get_session() -> AsyncSession:

@@ -33,7 +33,7 @@ def _compute_credit_factors(smb: SMB, requested_amount: int | None = None) -> tu
         + payment_history_score * payment_weight
         + revenue_factor * revenue_weight
     )
-    max_amount = int(smb.avg_monthly_revenue * 3 * composite)
+    max_amount = int(smb.avg_monthly_revenue * 1.5 * composite)
 
     factors = [
         {
@@ -94,8 +94,14 @@ router = APIRouter(prefix="/banker", tags=["banker"])
 
 
 @router.get("/portfolio", response_model=PortfolioOut)
-async def get_portfolio(session: AsyncSession = Depends(get_session)):
-    result = await session.execute(select(SMB).order_by(SMB.cash_stability))
+async def get_portfolio(
+    banker_id: Optional[str] = Query(None),
+    session: AsyncSession = Depends(get_session),
+):
+    query = select(SMB).order_by(SMB.cash_stability)
+    if banker_id:
+        query = query.where(SMB.assigned_banker_id == banker_id)
+    result = await session.execute(query)
     smbs = result.scalars().all()
     return PortfolioOut(
         smbs=[
@@ -117,11 +123,22 @@ async def get_portfolio(session: AsyncSession = Depends(get_session)):
 @router.get("/leads", response_model=list[LeadOut])
 async def list_leads(
     status: Optional[str] = Query(None),
+    banker_id: Optional[str] = Query(None),
     session: AsyncSession = Depends(get_session),
 ):
-    query = select(Lead).order_by(Lead.urgency_score.desc())
-    if status:
-        query = query.where(Lead.status == status)
+    if banker_id:
+        query = (
+            select(Lead)
+            .join(SMB, Lead.smb_id == SMB.id)
+            .order_by(Lead.urgency_score.desc())
+            .where(SMB.assigned_banker_id == banker_id)
+        )
+        if status:
+            query = query.where(Lead.status == status)
+    else:
+        query = select(Lead).order_by(Lead.urgency_score.desc())
+        if status:
+            query = query.where(Lead.status == status)
 
     result = await session.execute(query)
     leads = result.scalars().all()

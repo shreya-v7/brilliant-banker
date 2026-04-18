@@ -9,6 +9,9 @@ from langgraph.graph import END, StateGraph
 
 from backend.agent.input_safety import sanitize_user_text
 from backend.agent.tools import (
+    MAYA_SMB_ID,
+    PRIYA_SMB_ID,
+    WALKTHROUGH_CREDIT_DENY_MIN,
     check_credit_prequal,
     escalate_to_banker,
     get_cash_flow_forecast,
@@ -19,6 +22,8 @@ from backend.services.claude_service import (
     compose_reply,
     check_credit_info_completeness,
 )
+
+WALKTHROUGH_SMB_IDS = frozenset({MAYA_SMB_ID, PRIYA_SMB_ID})
 
 logger = logging.getLogger(__name__)
 
@@ -170,15 +175,17 @@ def _format_cash_flow_reply(tool_result: dict[str, Any]) -> str:
     if rev is None or exp is None or net is None:
         return ""
     return (
-        f"Here's your 30-day cash flow outlook for {name}: we project about ${rev:,.0f} in revenue "
-        f"and ${exp:,.0f} in expenses, for a net of about ${net:,.0f}. "
-        f"Risk outlook: {risk}."
+        f"Here's your illustrative 30-day cash flow outlook for {name} based on recent activity in this app: "
+        f"about ${rev:,.0f} in revenue and ${exp:,.0f} in expenses, for a net of about ${net:,.0f}. "
+        f"Risk outlook: {risk}. This is a demo projection, not audited financials; your RM or statements are "
+        f"authoritative for real planning."
     )
 
 
 async def reply_composer_node(state: AgentState) -> dict:
     intent = state.get("intent", "")
     tr = dict(state.get("tool_result") or {})
+    smb_id = state.get("smb_id", "")
     if (
         intent == "cash_flow_query"
         and "error" not in tr
@@ -187,6 +194,11 @@ async def reply_composer_node(state: AgentState) -> dict:
         formatted = _format_cash_flow_reply(tr)
         if formatted:
             return {"reply": formatted}
+
+    if intent == "credit_prequal_request":
+        wt = _format_walkthrough_credit_reply(smb_id, tr)
+        if wt:
+            return {"reply": wt}
 
     reply = await compose_reply(
         message=state["message"],
@@ -205,11 +217,75 @@ def _merge_ticket_into_tool_result(
     merged["ticket_number"] = esc.get("ticket_number")
     merged["assigned_rm"] = esc.get("assigned_rm")
     merged["lead_id"] = esc.get("lead_id")
-    merged["rm_review_notice"] = (
-        "Amounts over $10K go to your RM and underwriting. "
-        "Watch Activity for the final decision, usually within two to three business days."
-    )
+    if base.get("walkthrough_credit_denial"):
+        merged["rm_review_notice"] = (
+            "Your Relationship Manager will follow up on the reasons above and what alternatives may fit. "
+            "This instant check is not a final credit decision."
+        )
+    else:
+        merged["rm_review_notice"] = (
+            "Amounts over $10K go to your RM and underwriting. "
+            "Watch Activity for the final decision, usually within two to three business days."
+        )
     return merged
+
+
+def _format_walkthrough_credit_reply(smb_id: str, tool_result: dict[str, Any]) -> str:
+    """Deterministic copy for Maya/Priya: decline + tie-in to skit + RM follow-up (matches escalation merge)."""
+    if tool_result.get("needs_more_info"):
+        return ""
+    if smb_id not in WALKTHROUGH_SMB_IDS:
+        return ""
+    if tool_result.get("eligible") is not False:
+        return ""
+    reasons = tool_result.get("decline_reasons") or []
+    if isinstance(reasons, list) and reasons:
+        reason_para = " ".join(reasons)
+    else:
+        reason_para = (tool_result.get("reason") or "").strip()
+    if not reason_para:
+        return ""
+
+    if smb_id == MAYA_SMB_ID:
+        hook = (
+            "That reflects the same seasonal cash-flow tension we have been discussing: strong peaks, "
+            "then a thin winter window against payroll and supply costs."
+        )
+    else:
+        hook = (
+            "That lines up with the equipment spend and uneven weekly deposits we walked through: "
+            "the automated check needs a Relationship Manager to validate timing and headroom before new credit."
+        )
+
+    prior = tool_result.get("prior_underwriting_decision")
+    prior_bit = f" {prior}" if prior else ""
+
+    rm = tool_result.get("assigned_rm") or {}
+    rm_name = rm.get("name") if isinstance(rm, dict) else None
+    ticket = tool_result.get("ticket_number")
+    email = rm.get("email") if isinstance(rm, dict) else None
+
+    intro = (
+        "The instant pre-qualification here is not approving a new line at the amount you asked for. "
+        f"{reason_para}{prior_bit} "
+        f"{hook} "
+    )
+
+    if rm_name and ticket:
+        outro = (
+            f"Connect with your Relationship Manager, {rm_name}, to go deeper on the details and options; "
+            f"I have opened ticket {ticket} for follow-up. "
+        )
+        if email:
+            outro += f"You can also reach them at {email}."
+    elif rm_name:
+        outro = (
+            f"Use Connect with your RM in the app to reach {rm_name} so they can review the full picture with you."
+        )
+    else:
+        outro = "Use Connect with your RM in the app so your Relationship Manager can walk through next steps."
+
+    return (intro + outro).strip()
 
 
 async def escalation_checker_node(state: AgentState) -> dict:
@@ -224,24 +300,47 @@ async def escalation_checker_node(state: AgentState) -> dict:
         }
 
     if intent == "credit_prequal_request" and not tool_result.get("needs_more_info"):
+        smb_id = state["smb_id"]
         requested = tool_result.get("requested_amount", 0)
+        eligible = tool_result.get("eligible", False)
+        probability = float(tool_result.get("probability") or 0.0)
+
+        escalate = False
+        esc_reason = ""
+
         if requested > 10_000:
-            smb_id = state["smb_id"]
-            eligible = tool_result.get("eligible", False)
-            probability = tool_result.get("probability", 0.0)
-            reason = (
+            escalate = True
+            esc_reason = (
                 f"Loan request of ${requested:,}  - "
                 f"{'pre-qualified' if eligible else 'not pre-qualified'}. "
                 f"Auto-escalated (amount > $10K)."
             )
+        elif (
+            smb_id in WALKTHROUGH_SMB_IDS
+            and not eligible
+            and requested >= WALKTHROUGH_CREDIT_DENY_MIN
+        ):
+            escalate = True
+            summary = (tool_result.get("reason") or "").strip()
+            esc_reason = (
+                f"Walkthrough credit follow-up: instant pre-qual did not approve ${requested:,}; "
+                f"RM to discuss details. Context: {summary[:450]}"
+            )
+
+        if escalate:
             esc_result = await escalate_to_banker(
                 smb_id,
-                reason=reason,
+                reason=esc_reason,
                 urgency="high",
                 requested_amount=requested,
                 credit_score=probability,
             )
-            logger.info("Auto-escalated: smb_id=%s amount=%d score=%.2f", smb_id, requested, probability)
+            logger.info(
+                "Auto-escalated credit: smb_id=%s amount=%d eligible=%s",
+                smb_id,
+                requested,
+                eligible,
+            )
             merged = _merge_ticket_into_tool_result(tool_result, esc_result)
             return {
                 "escalated": True,

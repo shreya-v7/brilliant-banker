@@ -383,11 +383,11 @@ export default function BankerCreditReview({ user }) {
 
   const load = useCallback(() => {
     setLoading(true)
-    getLeads(filter || undefined)
+    getLeads(filter || undefined, user?.banker_id)
       .then(setLeads)
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [filter])
+  }, [filter, user?.banker_id])
 
   useEffect(() => { load() }, [load])
 

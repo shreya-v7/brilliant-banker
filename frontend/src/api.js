@@ -71,8 +71,11 @@ export function getSMBEscalations(smbId) {
 
 // ── Banker: Leads / Credit ────────────────────────────────────────────────────
 
-export function getLeads(status) {
-  const qs = status ? `?status=${status}` : '';
+export function getLeads(status, bankerId) {
+  const params = new URLSearchParams();
+  if (status) params.set('status', status);
+  if (bankerId) params.set('banker_id', bankerId);
+  const qs = params.toString() ? `?${params}` : '';
   return rawRequest(`/banker/leads${qs}`).then(dedupeLeadsById);
 }
 
@@ -86,7 +89,10 @@ export function submitDecision(leadId, body, bankerId) {
 
 // ── Banker: Portfolio ─────────────────────────────────────────────────────────
 
-export function getBankerPortfolio() { return rawRequest('/banker/portfolio'); }
+export function getBankerPortfolio(bankerId) {
+  const qs = bankerId ? `?banker_id=${bankerId}` : '';
+  return rawRequest(`/banker/portfolio${qs}`);
+}
 
 // ── Banker: SMB Profile + Brief ───────────────────────────────────────────────
 

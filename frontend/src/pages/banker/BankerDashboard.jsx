@@ -185,16 +185,17 @@ export default function BankerDashboard({ user }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    const bid = user?.banker_id
     Promise.all([
-      getLeads('pending').catch(() => []),
-      getLeads().catch(() => []),
-      getBankerPortfolio().catch(() => null),
+      getLeads('pending', bid).catch(() => []),
+      getLeads(undefined, bid).catch(() => []),
+      getBankerPortfolio(bid).catch(() => null),
     ]).then(([pending, all, port]) => {
       setLeads(pending)
       setAllLeads(all)
       setPortfolio(port)
     }).finally(() => setLoading(false))
-  }, [])
+  }, [user?.banker_id])
 
   const smbs = portfolio?.smbs ?? []
   const totalRevenue = smbs.reduce((s, c) => s + c.annual_revenue, 0)

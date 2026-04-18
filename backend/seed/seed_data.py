@@ -12,7 +12,7 @@ import logging
 import uuid
 from datetime import datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from backend.db.database import (
     Base, SMB, Banker, Lead, LeadEvent, Transaction, BankerNote,
@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 # ── Demo bankers ──────────────────────────────────────────────────────────────
 
+# Sarah = guided walkthrough / skit RM only. All others = user testing & default login (no overlap).
 MOCK_BANKERS = [
     {
         "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
@@ -47,6 +48,20 @@ MOCK_BANKERS = [
         "region": "Midwest",
         "email": "jordan.patel@pnc.com",
     },
+    {
+        "id": "dddddddd-dddd-dddd-dddd-dddddddddddd",
+        "name": "Elena Vasquez",
+        "title": "Vice President, Business Banking",
+        "region": "Southwest",
+        "email": "elena.vasquez@pnc.com",
+    },
+    {
+        "id": "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+        "name": "James Okonkwo",
+        "title": "Relationship Manager, Business Banking",
+        "region": "West",
+        "email": "james.okonkwo@pnc.com",
+    },
 ]
 
 # ── SMB owners ────────────────────────────────────────────────────────────────
@@ -61,6 +76,7 @@ MOCK_SMBS = [
         "cash_stability": 0.72,
         "payment_history": 0.88,
         "phone": "+14151110001",
+        "assigned_banker_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
     },
     {
         "id": "22222222-2222-2222-2222-222222222222",
@@ -71,6 +87,7 @@ MOCK_SMBS = [
         "cash_stability": 0.61,
         "payment_history": 0.79,
         "phone": "+14151110002",
+        "assigned_banker_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
     },
     {
         "id": "33333333-3333-3333-3333-333333333333",
@@ -81,6 +98,7 @@ MOCK_SMBS = [
         "cash_stability": 0.45,
         "payment_history": 0.82,
         "phone": "+14151110003",
+        "assigned_banker_id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
     },
     {
         "id": "44444444-4444-4444-4444-444444444444",
@@ -91,6 +109,7 @@ MOCK_SMBS = [
         "cash_stability": 0.38,
         "payment_history": 0.75,
         "phone": "+14151110004",
+        "assigned_banker_id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
     },
     {
         "id": "55555555-5555-5555-5555-555555555555",
@@ -101,6 +120,7 @@ MOCK_SMBS = [
         "cash_stability": 0.91,
         "payment_history": 0.95,
         "phone": "+14151110005",
+        "assigned_banker_id": "dddddddd-dddd-dddd-dddd-dddddddddddd",
     },
 ]
 
@@ -205,6 +225,7 @@ MOCK_LEADS = [
     {
         "id": "1ead1111-1111-1111-1111-111111111111",
         "smb_id": "33333333-3333-3333-3333-333333333333",
+        "assigned_banker_id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
         "status": "pending",
         "requested_amount": 35_000,
         "credit_score": 0.64,
@@ -214,6 +235,7 @@ MOCK_LEADS = [
     {
         "id": "2ead2222-2222-2222-2222-222222222222",
         "smb_id": "44444444-4444-4444-4444-444444444444",
+        "assigned_banker_id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
         "status": "pending",
         "requested_amount": 20_000,
         "credit_score": 0.57,
@@ -223,6 +245,7 @@ MOCK_LEADS = [
     {
         "id": "3ead3333-3333-3333-3333-333333333333",
         "smb_id": "22222222-2222-2222-2222-222222222222",
+        "assigned_banker_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
         "status": "approved",
         "requested_amount": 15_000,
         "credit_score": 0.71,
@@ -232,6 +255,7 @@ MOCK_LEADS = [
     {
         "id": "4ead4444-4444-4444-4444-444444444444",
         "smb_id": "22222222-2222-2222-2222-222222222222",
+        "assigned_banker_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
         "status": "referred",
         "requested_amount": 120_000,
         "credit_score": 0.82,
@@ -290,12 +314,12 @@ MOCK_LEAD_EVENTS = [
 MOCK_NOTES = [
     {
         "smb_id": "33333333-3333-3333-3333-333333333333",
-        "banker_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+        "banker_id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
         "note": "Called Aarav 4/2. Kitchen repair hurt March numbers badly. Strong customer retention, just needs bridge financing. Follow up on LOC application status.",
     },
     {
         "smb_id": "44444444-4444-4444-4444-444444444444",
-        "banker_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+        "banker_id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
         "note": "Nadia has excellent tour reviews online. Seasonal pattern is normal for tour services. Equipment purchase is strategic  - consider approving with seasonal repayment schedule.",
     },
     {
@@ -315,6 +339,17 @@ async def seed():
 
     async with async_session() as session:
 
+        # ── Bankers first (SMB.assigned_banker_id references bankers.id) ──
+        existing_bankers = {r[0] for r in (await session.execute(select(Banker.id))).all()}
+        banker_added = 0
+        for data in MOCK_BANKERS:
+            if data["id"] not in existing_bankers:
+                session.add(Banker(**data))
+                banker_added += 1
+                logger.info("  Added Banker: %s", data["name"])
+        await session.commit()
+        logger.info("Bankers: %d added", banker_added)
+
         # ── SMBs ──
         existing_smbs = {r[0] for r in (await session.execute(select(SMB.id))).all()}
         smb_added = 0
@@ -326,16 +361,13 @@ async def seed():
         await session.commit()
         logger.info("SMBs: %d added", smb_added)
 
-        # ── Bankers ──
-        existing_bankers = {r[0] for r in (await session.execute(select(Banker.id))).all()}
-        banker_added = 0
-        for data in MOCK_BANKERS:
-            if data["id"] not in existing_bankers:
-                session.add(Banker(**data))
-                banker_added += 1
-                logger.info("  Added Banker: %s", data["name"])
+        for data in MOCK_SMBS:
+            aid = data.get("assigned_banker_id")
+            if aid:
+                await session.execute(
+                    update(SMB).where(SMB.id == data["id"]).values(assigned_banker_id=aid)
+                )
         await session.commit()
-        logger.info("Bankers: %d added", banker_added)
 
         # ── Transactions ──
         existing_txns = {r[0] for r in (await session.execute(select(Transaction.smb_id))).all()}
@@ -362,6 +394,14 @@ async def seed():
                 logger.info("  Added Lead: %s status=%s", data["id"], data["status"])
         await session.commit()
         logger.info("Leads: %d added", lead_added)
+
+        for data in MOCK_LEADS:
+            aid = data.get("assigned_banker_id")
+            if aid:
+                await session.execute(
+                    update(Lead).where(Lead.id == data["id"]).values(assigned_banker_id=aid)
+                )
+        await session.commit()
 
         # ── Lead Events ──
         existing_events = {r[0] for r in (await session.execute(select(LeadEvent.lead_id))).all()}

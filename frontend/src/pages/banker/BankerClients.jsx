@@ -55,7 +55,7 @@ const FILTERS = [
   { key: 'risk', label: 'At Risk' },
 ]
 
-export default function BankerClients() {
+export default function BankerClients({ user }) {
   const navigate = useNavigate()
   const location = useLocation()
   const [clients, setClients] = useState([])
@@ -64,11 +64,11 @@ export default function BankerClients() {
   const [filter, setFilter] = useState(location.state?.filter || 'all')
 
   useEffect(() => {
-    getBankerPortfolio()
+    getBankerPortfolio(user?.banker_id)
       .then(data => setClients(data?.smbs ?? []))
       .catch(() => setClients([]))
       .finally(() => setLoading(false))
-  }, [])
+  }, [user?.banker_id])
 
   const filtered = clients
     .filter(c => {

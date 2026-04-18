@@ -34,14 +34,15 @@ export default function BankerProfile({ user, onLogout }) {
   const [portfolio, setPortfolio] = useState(null)
 
   useEffect(() => {
+    const bid = user?.banker_id
     Promise.all([
-      getLeads().catch(() => []),
-      getBankerPortfolio().catch(() => null),
+      getLeads(undefined, bid).catch(() => []),
+      getBankerPortfolio(bid).catch(() => null),
     ]).then(([l, p]) => {
       setLeads(l)
       setPortfolio(p)
     })
-  }, [])
+  }, [user?.banker_id])
 
   const approved = leads.filter(l => l.status === 'approved').length
   const pending = leads.filter(l => l.status === 'pending').length

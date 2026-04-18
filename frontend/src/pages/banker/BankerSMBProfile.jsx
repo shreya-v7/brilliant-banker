@@ -102,7 +102,7 @@ export default function BankerSMBProfile({ user }) {
   useEffect(() => {
     Promise.all([
       getBankerSMBBrief(id),
-      getLeads().catch(() => []),
+      getLeads(undefined, user?.banker_id).catch(() => []),
       getTransactions(id).catch(() => []),
       getBankerNotes(id).catch(() => []),
     ]).then(([profileData, allLeads, txns, noteData]) => {
@@ -113,7 +113,7 @@ export default function BankerSMBProfile({ user }) {
       setNotes(noteData)
     }).catch(() => {})
       .finally(() => setLoading(false))
-  }, [id])
+  }, [id, user?.banker_id])
 
   const fetchBrief = async () => {
     setLoadingBrief(true)
