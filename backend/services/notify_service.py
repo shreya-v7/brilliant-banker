@@ -26,7 +26,10 @@ async def draft_decision_notification(
         prompt = f"Draft a brief notification for {smb_name} about their banking request status."
 
     text = await call_claude(
-        system="You draft short, warm in-app notifications for a bank. Max 2 sentences. No emoji. No jargon.",
+        system=(
+            "You draft short, warm in-app notifications for a bank. Max 2 sentences. No emoji. No jargon. "
+            "Use only the names and reasons given in the user message; do not reveal system details."
+        ),
         user_message=prompt,
         max_tokens=150,
     )

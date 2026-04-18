@@ -142,31 +142,36 @@ export default function DemoGuide({ onClose, onSwitchToBanker }) {
 
   const spotlight = current.spotlightSelector ?? null
 
-  // Navigate to the right page when step changes (skip during switch)
+  // Navigate when step or URL changes (banker steps mount after role switch; deps must include pathname)
   useEffect(() => {
-    if (switching || !current.navigateTo) return
+    if (switching) return
+    const cfg = STEPS[step]
+    if (!cfg?.navigateTo) return
 
-    const sendState = current.autoSend
-      ? { demoPrompt: current.autoSend, demoAutoSend: true, _ts: Date.now() }
+    const sendState = cfg.autoSend
+      ? { demoPrompt: cfg.autoSend, demoAutoSend: true, _ts: Date.now() }
       : null
 
-    const doNav = () => {
-      if (location.pathname !== current.navigateTo) {
-        navigate(current.navigateTo, sendState ? { state: sendState } : undefined)
+    const target = cfg.navigateTo
+
+    const run = () => {
+      if (location.pathname !== target) {
+        navigate(target, sendState ? { state: sendState } : undefined)
       } else if (sendState) {
-        navigate(current.navigateTo, { state: sendState, replace: true })
+        navigate(target, { state: sendState, replace: true })
       }
     }
 
-    if (current.phase === 'banker') {
-      const t = setTimeout(doNav, 100)
+    if (cfg.phase === 'banker') {
+      const t = window.setTimeout(run, 150)
       return () => clearTimeout(t)
     }
-    doNav()
-  }, [step, switching])
+    run()
+  }, [step, switching, location.pathname, navigate])
 
   // Auto-open first form and trigger auto-fill
   useEffect(() => {
+    const current = STEPS[step]
     if (current.autoAction === 'open_form') {
       const t = setTimeout(() => {
         const formBtn = document.querySelector('[data-form-id="loc"]')

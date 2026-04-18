@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.db.database import Lead, LeadEvent, SMB, Banker, BankerNote, get_session
+from backend.db.lead_utils import normalize_demo_leads
 from backend.models.schemas import (
     DecisionRequest,
     DecisionResponse,
@@ -203,6 +204,11 @@ async def create_decision(
 
     event.sms_sent = notification_text
     await session.commit()
+
+    try:
+        await normalize_demo_leads()
+    except Exception:
+        pass
 
     try:
         await publish_event(decision_event(

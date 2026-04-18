@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.agent.graph import run_agent
+from backend.agent.input_safety import sanitize_user_text
 from backend.db.conversations import clear_conversations_for_smb, get_history, save_message
 from backend.db.database import SMB, Banker, get_session, async_session
 from backend.models.schemas import BankerOut, BankerLoginRequest
@@ -149,6 +150,8 @@ async def chat(body: ChatRequest):
 
     if not message:
         raise HTTPException(status_code=400, detail="Message cannot be empty")
+
+    message = sanitize_user_text(message)
 
     history = await get_history(smb_id, limit=10)
 

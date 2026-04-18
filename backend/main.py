@@ -11,9 +11,9 @@ from starlette.responses import FileResponse
 
 from backend.db.conversations import clear_all_conversations
 from backend.db.database import init_db
-from backend.db.lead_utils import collapse_duplicate_pending_leads
+from backend.db.lead_utils import normalize_demo_leads
 from backend.models.schemas import Settings
-from backend.routers import banker, chat, smb, stream
+from backend.routers import banker, chat, smb, stream, survey
 
 logging.basicConfig(
     level=logging.INFO,
@@ -53,7 +53,7 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("Could not clear conversations: %s", e)
     try:
-        await collapse_duplicate_pending_leads()
+        await normalize_demo_leads()
     except Exception as e:
         logger.warning("Could not collapse duplicate leads: %s", e)
     await _auto_seed_if_empty()
@@ -80,6 +80,7 @@ app.include_router(chat.router)
 app.include_router(banker.router)
 app.include_router(smb.router)
 app.include_router(stream.router)
+app.include_router(survey.router)
 
 
 @app.get("/health", tags=["health"])

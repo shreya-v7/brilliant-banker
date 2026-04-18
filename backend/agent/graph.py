@@ -7,6 +7,7 @@ from typing import Any, TypedDict
 
 from langgraph.graph import END, StateGraph
 
+from backend.agent.input_safety import sanitize_user_text
 from backend.agent.tools import (
     check_credit_prequal,
     escalate_to_banker,
@@ -32,6 +33,40 @@ class AgentState(TypedDict, total=False):
     reply: str
     escalated: bool
     escalation_result: dict[str, Any]
+
+
+def _looks_like_cash_flow(message: str) -> bool:
+    """Heuristic when the LLM classifier returns general_chat/faq for obvious forecast asks."""
+    m = (message or "").lower()
+    if any(
+        x in m
+        for x in (
+            "credit line",
+            "line of credit",
+            "borrow",
+            "pre-qual",
+            "prequal",
+            "loan for",
+        )
+    ) and "cash flow" not in m:
+        return False
+    if "cash flow" in m or "cashflow" in m:
+        return True
+    if "what's my cash" in m or "what is my cash" in m:
+        return True
+    if "forecast" in m and any(
+        x in m for x in ("revenue", "expense", "net", "projection", "projected", "30")
+    ):
+        return True
+    return False
+
+
+def _refine_intent(message: str, intent: str) -> str:
+    if intent in ("credit_prequal_request", "escalate_to_banker"):
+        return intent
+    if intent in ("general_chat", "faq_question") and _looks_like_cash_flow(message):
+        return "cash_flow_query"
+    return intent
 
 
 def _parse_amount_from_message(message: str) -> int:
@@ -70,6 +105,8 @@ async def intent_classifier_node(state: AgentState) -> dict:
     }
     if intent not in valid_intents:
         intent = "general_chat"
+
+    intent = _refine_intent(state["message"], intent)
 
     logger.info("Classified intent: %s (raw: %s)", intent, raw.strip())
     return {"intent": intent}
@@ -123,10 +160,37 @@ async def tool_router_node(state: AgentState) -> dict:
     return {"tool_result": result}
 
 
+def _format_cash_flow_reply(tool_result: dict[str, Any]) -> str:
+    """Deterministic forecast text so we never show a generic greeting when data exists."""
+    rev = tool_result.get("projected_30_day_revenue")
+    exp = tool_result.get("projected_30_day_expenses")
+    net = tool_result.get("projected_net")
+    risk = tool_result.get("risk_flag", "medium")
+    name = tool_result.get("smb_name") or "your business"
+    if rev is None or exp is None or net is None:
+        return ""
+    return (
+        f"Here's your 30-day cash flow outlook for {name}: we project about ${rev:,.0f} in revenue "
+        f"and ${exp:,.0f} in expenses, for a net of about ${net:,.0f}. "
+        f"Risk outlook: {risk}."
+    )
+
+
 async def reply_composer_node(state: AgentState) -> dict:
+    intent = state.get("intent", "")
+    tr = dict(state.get("tool_result") or {})
+    if (
+        intent == "cash_flow_query"
+        and "error" not in tr
+        and "projected_net" in tr
+    ):
+        formatted = _format_cash_flow_reply(tr)
+        if formatted:
+            return {"reply": formatted}
+
     reply = await compose_reply(
         message=state["message"],
-        tool_result=state.get("tool_result", {}),
+        tool_result=tr,
         history=state.get("history", []),
     )
     return {"reply": reply}
@@ -214,6 +278,7 @@ async def run_agent(
     message: str,
     history: list[dict[str, Any]] | None = None,
 ) -> AgentState:
+    message = sanitize_user_text(message)
     initial_state: AgentState = {
         "smb_id": smb_id,
         "phone": phone,

@@ -115,7 +115,7 @@ React App → POST /api/chat → LangGraph Agent → Claude → Response
 
 ## Implementation Roadmap (18 months)
 
-### Phase 1: Data Foundation (months 1–3)
+### Phase 1: Data Foundation (months 1 to 3)
 
 | Component | Details | Tech |
 |-----------|---------|------|
@@ -123,7 +123,7 @@ React App → POST /api/chat → LangGraph Agent → Claude → Response
 | Seasonal decomposition | Decompose 3+ year histories into trend, seasonal, residual. | Prophet/STL, 928K clients |
 | Feature store | Centralized registry: seasonality index, cash runway, peer percentile. | Feast/Tecton, Redis cache |
 
-### Phase 2: Cash Flow MVP (months 3–6)
+### Phase 2: Cash Flow MVP (months 3 to 6)
 
 | Component | Details | Tech |
 |-----------|---------|------|
@@ -132,7 +132,7 @@ React App → POST /api/chat → LangGraph Agent → Claude → Response
 | Banker CRM v1 | Pre-call brief for pilot bankers. Client health, seasonal flags. | React, REST API |
 | Pilot: 1,000 SMBs | Seasonal businesses first. Target: 20% MAPE. Shadow mode 90 days. | Fox, Valentina, Kayla |
 
-### Phase 3: Full Intelligence (months 6–12)
+### Phase 3: Full Intelligence (months 6 to 12)
 
 | Component | Details | Tech |
 |-----------|---------|------|
@@ -140,7 +140,7 @@ React App → POST /api/chat → LangGraph Agent → Claude → Response
 | Anomaly detection | Real-time fraud alerts. Prevents Carroll $66K scenario. | Isolation forest, Flink |
 | Bridge alerts | Dual notification: owner + banker simultaneously. | Event router, Push API |
 
-### Phase 4: Scale to ~796K (months 12–18)
+### Phase 4: Scale to ~796K (months 12 to 18)
 
 | Component | Details |
 |-----------|---------|
@@ -152,7 +152,7 @@ React App → POST /api/chat → LangGraph Agent → Claude → Response
 
 | Category | Requirement | Mitigation |
 |----------|-------------|------------|
-| Team | 7–10 hires: 3-5 ML, 1-2 conversational AI, 1 UX | Small vs Chase $18B. Focused team. |
+| Team | 7 to 10 hires: 3-5 ML, 1-2 conversational AI, 1 UX | Small vs Chase $18B. Focused team. |
 | Accuracy | Forecast must be under 20% MAPE | BofA CashPro proves approach. 90-day shadow mode. |
 | Regulatory | Credit pre-qual under ECOA / OCC AI guidance | Explainable models. "Informational" framing. |
 | Addressable | ~796K × $6,765 = ~$5.4B within PNC base | 5% adoption lift = ~$269M. |

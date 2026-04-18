@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import (
+    Boolean,
     Column,
     DateTime,
     Float,
@@ -132,6 +133,38 @@ class Conversation(Base):
     role = Column(String(20), nullable=False)
     content = Column(Text, nullable=False)
     created_at = Column(DateTime, server_default=func.now())
+
+
+class SurveyResponse(Base):
+    __tablename__ = "survey_responses"
+
+    id = Column(String(32), primary_key=True, default=lambda: uuid.uuid4().hex)
+    participant_role = Column("role", String(10), nullable=False)
+    respondent_name = Column(String(500), nullable=False)
+    respondent_business = Column(Text, nullable=True)
+    respondent_email = Column(Text, nullable=True)
+    tasks_completed = Column(Integer, nullable=False, default=0)
+    total_tasks = Column(Integer, nullable=False, default=0)
+    overall_nps = Column(Integer, nullable=True)
+    overall_comment = Column(Text, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+
+    answers = relationship("SurveyAnswer", back_populates="survey", lazy="selectin")
+
+
+class SurveyAnswer(Base):
+    __tablename__ = "survey_answers"
+
+    id = Column(String(32), primary_key=True, default=lambda: uuid.uuid4().hex)
+    survey_id = Column(String(32), ForeignKey("survey_responses.id"), nullable=False)
+    question_id = Column(String(100), nullable=False)
+    question_text = Column(Text, nullable=False)
+    answer_type = Column(String(40), nullable=False)
+    answer = Column(Text, nullable=False)
+    task_completed = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime, server_default=func.now())
+
+    survey = relationship("SurveyResponse", back_populates="answers")
 
 
 async def init_db() -> None:

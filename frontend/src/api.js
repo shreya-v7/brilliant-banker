@@ -24,6 +24,17 @@ async function rawRequest(path, options = {}) {
   return res.json();
 }
 
+/** Defensive dedupe if duplicate lead rows ever slip through (e.g. before DB normalize). */
+function dedupeLeadsById(rows) {
+  if (!Array.isArray(rows)) return rows;
+  const seen = new Set();
+  return rows.filter((r) => {
+    if (!r?.id || seen.has(r.id)) return false;
+    seen.add(r.id);
+    return true;
+  });
+}
+
 // ── SMB Auth ──────────────────────────────────────────────────────────────────
 
 export function getUsers()  { return request('/auth/users'); }
@@ -54,13 +65,15 @@ export function getChatHistory(smb_id) {
 
 export function getSMBProfile(smbId)       { return rawRequest(`/smb/${smbId}/profile`); }
 export function getTransactions(smbId)     { return rawRequest(`/smb/${smbId}/transactions?limit=20`); }
-export function getSMBEscalations(smbId)   { return rawRequest(`/smb/${smbId}/escalations`); }
+export function getSMBEscalations(smbId) {
+  return rawRequest(`/smb/${smbId}/escalations`).then(dedupeLeadsById);
+}
 
 // ── Banker: Leads / Credit ────────────────────────────────────────────────────
 
 export function getLeads(status) {
   const qs = status ? `?status=${status}` : '';
-  return rawRequest(`/banker/leads${qs}`);
+  return rawRequest(`/banker/leads${qs}`).then(dedupeLeadsById);
 }
 
 export function submitDecision(leadId, body, bankerId) {
@@ -114,4 +127,23 @@ export function connectRMStream(onEvent) {
   };
 
   return source;
+}
+
+// ── User testing surveys ─────────────────────────────────────────────────────
+
+export function submitSurvey(payload) {
+  return request('/survey/submit', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getSurveyResults(password) {
+  const q = new URLSearchParams({ password });
+  return request(`/survey/results?${q.toString()}`);
+}
+
+export function getSurveyExportUrl(password) {
+  const q = new URLSearchParams({ password });
+  return `/api/survey/export?${q.toString()}`;
 }

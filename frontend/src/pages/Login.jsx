@@ -1,6 +1,11 @@
-import { useState, useEffect } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useState, useEffect, useMemo } from 'react'
+import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { getUsers, getBankers, login, bankerLogin } from '../api'
+import {
+  SARAH_BANKER_ID,
+  isWalkthroughSmb,
+  isWalkthroughBanker,
+} from '../constants/demo'
 import {
   Building2,
   ChevronRight,
@@ -17,6 +22,16 @@ import {
 
 export default function Login({ onLogin, onShowMarketing, onShowScene, defaultMode }) {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  /** User-testing entry uses ?testing=1 / ?testing=true. */
+  const isUserTestingFlow =
+    searchParams.get('testing') === '1' || searchParams.get('testing') === 'true'
+  /** SMB walkthrough entry (?walkthrough=1): only Maya & Priya appear in the list. */
+  const walkthroughEntry =
+    searchParams.get('walkthrough') === '1' || searchParams.get('walkthrough') === 'true'
+  /** RM walkthrough entry: only Sarah Chen appears in the banker list. */
+  const walkthroughBankerEntry =
+    searchParams.get('walkthrough') === '1' || searchParams.get('walkthrough') === 'true'
   const [mode, setMode] = useState(defaultMode || null) // null | 'smb' | 'banker'
   const [users, setUsers] = useState([])
   const [bankers, setBankers] = useState([])
@@ -35,6 +50,20 @@ export default function Login({ onLogin, onShowMarketing, onShowScene, defaultMo
     }).catch(() => setError('Could not connect to server. Is the backend running?'))
       .finally(() => setLoading(false))
   }, [])
+
+  const smbPickList = useMemo(() => {
+    if (!users.length) return []
+    if (walkthroughEntry) return users.filter((u) => isWalkthroughSmb(u.smb_id))
+    if (isUserTestingFlow) return users.filter((u) => !isWalkthroughSmb(u.smb_id))
+    return users.filter((u) => !isWalkthroughSmb(u.smb_id))
+  }, [users, walkthroughEntry, isUserTestingFlow])
+
+  const bankerPickList = useMemo(() => {
+    if (!bankers.length) return []
+    if (walkthroughBankerEntry) return bankers.filter((b) => b.banker_id === SARAH_BANKER_ID)
+    if (isUserTestingFlow) return bankers.filter((b) => !isWalkthroughBanker(b.banker_id))
+    return bankers.filter((b) => !isWalkthroughBanker(b.banker_id))
+  }, [bankers, walkthroughBankerEntry, isUserTestingFlow])
 
   const handleSMBLogin = async (smbId) => {
     setLoggingIn(smbId)
@@ -110,6 +139,28 @@ export default function Login({ onLogin, onShowMarketing, onShowScene, defaultMo
             </p>
           </div>
 
+          <div className="mt-8 w-full max-w-md flex flex-col gap-3">
+            <Link
+              to="/test/guide"
+              className="w-full min-h-[52px] flex items-center justify-center rounded-2xl text-white font-bold text-sm shadow-lg
+                         border-2 border-white/35 hover:border-white/50 transition-colors"
+              style={{ backgroundColor: '#002D5F' }}
+            >
+              User Testing
+            </Link>
+            <button
+              type="button"
+              onClick={() => navigate('/business?walkthrough=1')}
+              className="w-full min-h-[48px] flex items-center justify-center rounded-2xl border-2 border-white/35 text-white font-semibold text-sm hover:bg-white/10 transition-colors"
+            >
+              Walkthrough / Demo
+            </button>
+            <p className="text-white/45 text-[11px] text-center leading-snug">
+              Guided walkthrough: sign in as <span className="text-white/70 font-semibold">Maya Patel</span> only,
+              then use the floating Walkthrough on the home screen. Other demo profiles use the app without that tour.
+            </p>
+          </div>
+
           {/* Two cards */}
           <div className="grid sm:grid-cols-2 gap-4 mt-10 w-full max-w-2xl">
             {/* SMB Card */}
@@ -146,9 +197,10 @@ export default function Login({ onLogin, onShowMarketing, onShowScene, defaultMo
               </div>
             </button>
 
-            {/* Banker Card */}
+            {/* Banker Card — Sarah Chen walkthrough RM only (other RMs: user testing entry) */}
             <button
-              onClick={() => navigate('/banker')}
+              type="button"
+              onClick={() => navigate('/banker?walkthrough=1')}
               className="group bg-white/5 border border-white/10 rounded-2xl p-6 text-left
                          hover:bg-white/10 hover:border-white/30 transition-all"
             >
@@ -286,9 +338,9 @@ export default function Login({ onLogin, onShowMarketing, onShowScene, defaultMo
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {users.map((u) => {
-                    const isSceneChar = u.smb_id === '11111111-1111-1111-1111-111111111111'
-                      || u.smb_id === '22222222-2222-2222-2222-222222222222'
+                  {smbPickList.map((u) => {
+                    const isSkitActorRow =
+                      walkthroughEntry && !isUserTestingFlow && isWalkthroughSmb(u.smb_id)
                     return (
                       <button
                         key={u.smb_id}
@@ -297,7 +349,7 @@ export default function Login({ onLogin, onShowMarketing, onShowScene, defaultMo
                         className={`w-full flex items-center gap-3 p-3 rounded-xl border
                                    hover:border-pnc-orange/40 hover:bg-pnc-orange/[0.03] active:bg-pnc-orange/[0.06]
                                    transition-all text-left disabled:opacity-50
-                                   ${isSceneChar ? 'border-amber-300 bg-amber-50/30' : 'border-pnc-gray-200'}`}
+                                   ${isSkitActorRow ? 'border-amber-300 bg-amber-50/30' : 'border-pnc-gray-200'}`}
                       >
                         <div className="w-10 h-10 rounded-full bg-pnc-navy/5 flex items-center justify-center shrink-0">
                           <Building2 size={18} className="text-pnc-navy" />
@@ -305,7 +357,7 @@ export default function Login({ onLogin, onShowMarketing, onShowScene, defaultMo
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5">
                             <p className="text-pnc-gray-900 text-sm font-semibold truncate">{u.name}</p>
-                            {isSceneChar && (
+                            {isSkitActorRow && (
                               <span className="text-[9px] font-bold text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded-full shrink-0">
                                 SKIT
                               </span>
@@ -427,7 +479,7 @@ export default function Login({ onLogin, onShowMarketing, onShowScene, defaultMo
             </div>
           ) : (
             <div className="space-y-3">
-              {bankers.map((b) => (
+              {bankerPickList.map((b) => (
                 <button
                   key={b.banker_id}
                   onClick={() => handleBankerLogin(b.banker_id)}

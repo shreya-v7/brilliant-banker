@@ -7,6 +7,7 @@ from typing import Any
 from sqlalchemy import select
 
 from backend.db.database import Banker, Lead, SMB, async_session
+from backend.db.lead_utils import normalize_demo_leads
 from backend.models.schemas import (
     CashFlowForecast,
     CreditFactor,
@@ -270,6 +271,8 @@ async def escalate_to_banker(
 ) -> dict[str, Any]:
     urgency_scores = {"low": 0.3, "medium": 0.6, "high": 0.9}
     urgency_score = urgency_scores.get(urgency, 0.6)
+
+    await normalize_demo_leads()
 
     async with async_session() as session:
         banker_result = await session.execute(

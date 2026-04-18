@@ -35,9 +35,9 @@ function fmt(n, short = false) {
 function revBracket(n) {
   if (n == null) return '--'
   if (n >= 1_000_000) return '$1M+'
-  if (n >= 500_000) return '$500K–$1M'
-  if (n >= 100_000) return '$100K–$500K'
-  if (n >= 50_000) return '$50K–$100K'
+  if (n >= 500_000) return '$500K to $1M'
+  if (n >= 100_000) return '$100K to $500K'
+  if (n >= 50_000) return '$50K to $100K'
   return '< $50K'
 }
 function fmtDate(iso) {
@@ -307,16 +307,16 @@ export default function BankerDashboard({ user }) {
             {/* Pipeline bar */}
             <div className="px-4 pt-4 pb-3">
               <div className="flex rounded-full overflow-hidden h-2.5 mb-3">
-                {leads.length > 0 && (
+                {allLeads.length > 0 && leads.length > 0 && (
                   <div className="bg-amber-400 h-full" style={{ width: `${(leads.length / allLeads.length) * 100}%` }} />
                 )}
-                {approved.length > 0 && (
+                {allLeads.length > 0 && approved.length > 0 && (
                   <div className="bg-green-500 h-full" style={{ width: `${(approved.length / allLeads.length) * 100}%` }} />
                 )}
-                {referred.length > 0 && (
+                {allLeads.length > 0 && referred.length > 0 && (
                   <div className="bg-blue-400 h-full" style={{ width: `${(referred.length / allLeads.length) * 100}%` }} />
                 )}
-                {declined.length > 0 && (
+                {allLeads.length > 0 && declined.length > 0 && (
                   <div className="bg-red-400 h-full" style={{ width: `${(declined.length / allLeads.length) * 100}%` }} />
                 )}
               </div>
@@ -394,7 +394,7 @@ export default function BankerDashboard({ user }) {
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">
                     <UrgencyBadge score={lead.urgency_score} />
-                    <span className="text-pnc-gray-400 text-[9px]">score {(lead.credit_score * 100).toFixed(0)}</span>
+                    <span className="text-pnc-gray-400 text-[9px]">score {((lead.credit_score ?? 0) * 100).toFixed(0)}</span>
                   </div>
                   <ChevronRight size={13} className="text-pnc-gray-300 shrink-0" />
                 </button>
@@ -424,7 +424,7 @@ export default function BankerDashboard({ user }) {
               <div className="flex-1 space-y-2">
                 {[
                   { label: 'Healthy',  count: healthy.length, color: 'bg-green-500',  text: 'text-green-700',  sub: '≥ 70% stability' },
-                  { label: 'Watch',    count: watch.length,   color: 'bg-amber-400',  text: 'text-amber-700',  sub: '50–70%' },
+                  { label: 'Watch',    count: watch.length,   color: 'bg-amber-400',  text: 'text-amber-700',  sub: '50 to 70%' },
                   { label: 'At Risk',  count: atRisk.length,  color: 'bg-red-500',    text: 'text-red-700',    sub: '< 50%' },
                 ].map(({ label, count, color, text, sub }) => (
                   <div key={label} className="flex items-center gap-2">

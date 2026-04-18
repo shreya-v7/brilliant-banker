@@ -33,9 +33,9 @@ function fmt(n) {
 function revBracket(n) {
   if (n == null) return '--'
   if (n >= 1_000_000) return '$1M+'
-  if (n >= 500_000) return '$500K–$1M'
-  if (n >= 100_000) return '$100K–$500K'
-  if (n >= 50_000) return '$50K–$100K'
+  if (n >= 500_000) return '$500K to $1M'
+  if (n >= 100_000) return '$100K to $500K'
+  if (n >= 50_000) return '$50K to $100K'
   return '< $50K'
 }
 function fmtDate(iso) {
