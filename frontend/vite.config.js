@@ -13,6 +13,7 @@ export default defineConfig({
         headers: { 'Connection': 'keep-alive' },
       },
       '/banker/leads': 'http://localhost:8000',
+      '/banker/demo': 'http://localhost:8000',
       '/banker/portfolio': 'http://localhost:8000',
       '/banker/smb': 'http://localhost:8000',
       '/smb': 'http://localhost:8000',

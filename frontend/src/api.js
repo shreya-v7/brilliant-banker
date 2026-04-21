@@ -87,6 +87,23 @@ export function submitDecision(leadId, body, bankerId) {
   });
 }
 
+/** Dedupe lead rows in DB (pending/terminal/events). */
+export function normalizeDemoLeads() {
+  return rawRequest('/banker/demo/normalize-leads', { method: 'POST' });
+}
+
+/**
+ * Reset Maya/Priya walkthrough for the RM: dedupe leads, drop their pending queue rows,
+ * optionally clear their SMB chat transcripts. Does not remove seeded declined/approved history.
+ */
+export function resetWalkthroughDemo({ clearConversations = true, bankerId } = {}) {
+  const params = new URLSearchParams();
+  if (!clearConversations) params.set('clear_conversations', 'false');
+  if (bankerId) params.set('banker_id', bankerId);
+  const qs = params.toString() ? `?${params}` : '';
+  return rawRequest(`/banker/demo/reset-walkthrough${qs}`, { method: 'POST' });
+}
+
 // ── Banker: Portfolio ─────────────────────────────────────────────────────────
 
 export function getBankerPortfolio(bankerId) {

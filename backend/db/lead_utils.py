@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import Any
+from typing import Any, Sequence
 
 from sqlalchemy import delete, select
 
@@ -115,3 +115,26 @@ async def normalize_demo_leads() -> dict[str, Any]:
     terminal = await collapse_duplicate_terminal_leads()
     events = await collapse_duplicate_lead_events()
     return {"pending_removed": pending, "terminal_removed": terminal, "events_removed": events}
+
+
+async def delete_pending_leads_for_smbs(smb_ids: Sequence[str]) -> int:
+    """
+    Remove pending leads (and their events) for the given SMB ids.
+    Used to reset the RM priority queue between walkthrough runs without touching
+    terminal/seeded history rows.
+    """
+    if not smb_ids:
+        return 0
+    removed = 0
+    async with async_session() as session:
+        result = await session.execute(
+            select(Lead).where(Lead.smb_id.in_(smb_ids), Lead.status == "pending")
+        )
+        for lead in result.scalars().all():
+            await session.execute(delete(LeadEvent).where(LeadEvent.lead_id == lead.id))
+            await session.delete(lead)
+            removed += 1
+        await session.commit()
+        if removed:
+            logger.info("Deleted %d pending lead(s) for smb_ids=%s", removed, smb_ids)
+    return removed

@@ -44,7 +44,24 @@ export default function BankerLayout({ user, children }) {
 
   useEffect(() => {
     sourceRef.current = connectRMStream((event) => {
-      setEvents(prev => [event, ...prev].slice(0, 50))
+      setEvents((prev) => {
+        let base = prev
+        if (
+          event.event_type === 'chat_highlight'
+          && event.ticket_number
+          && event.smb_id
+        ) {
+          base = prev.filter(
+            (e) =>
+              !(
+                e.event_type === 'chat_highlight'
+                && e.ticket_number === event.ticket_number
+                && e.smb_id === event.smb_id
+              ),
+          )
+        }
+        return [event, ...base].slice(0, 50)
+      })
       if (!showFeed) setUnread(prev => prev + 1)
 
       setToast(event)

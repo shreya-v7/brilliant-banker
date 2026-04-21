@@ -3,11 +3,14 @@ from __future__ import annotations
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.agent.tools import MAYA_SMB_ID, PRIYA_SMB_ID
+from backend.db.conversations import clear_conversations_for_smb
 from backend.db.database import Lead, LeadEvent, SMB, Banker, BankerNote, get_session
-from backend.db.lead_utils import normalize_demo_leads
+from backend.db.lead_utils import delete_pending_leads_for_smbs, normalize_demo_leads
 from backend.models.schemas import (
     DecisionRequest,
     DecisionResponse,
@@ -91,6 +94,76 @@ from backend.services.notify_service import draft_decision_notification
 from backend.services.stream_service import publish_event, decision_event
 
 router = APIRouter(prefix="/banker", tags=["banker"])
+
+
+class WalkthroughDemoResetOut(BaseModel):
+    """Result of resetting Maya/Priya walkthrough state for the RM queue."""
+
+    dedupe_pending_removed: int
+    dedupe_terminal_removed: int
+    dedupe_events_removed: int
+    pending_leads_deleted: int
+    conversations_cleared: list[str]
+
+
+@router.post("/demo/reset-walkthrough", response_model=WalkthroughDemoResetOut)
+async def reset_walkthrough_demo(
+    clear_conversations: bool = Query(
+        True,
+        description="Clear stored chat transcripts for walkthrough SMBs (Maya, Priya).",
+    ),
+    banker_id: Optional[str] = Query(
+        None,
+        description="If set, only targets walkthrough SMBs assigned to this banker (e.g. Sarah Chen).",
+    ),
+    session: AsyncSession = Depends(get_session),
+):
+    """
+    Reset demo state for the guided walkthrough: dedupe lead rows, remove **pending**
+    requests from Maya/Priya (so Sarah's queue does not stack repeats), and optionally
+    wipe their AI chat history. Seeded declined/approved/referred leads are not removed.
+    """
+    walkthrough_ids = [MAYA_SMB_ID, PRIYA_SMB_ID]
+    target_smb_ids = list(walkthrough_ids)
+    if banker_id:
+        res = await session.execute(
+            select(SMB.id).where(
+                SMB.id.in_(walkthrough_ids),
+                SMB.assigned_banker_id == banker_id,
+            )
+        )
+        target_smb_ids = [str(r) for r in res.scalars().all()]
+        if not target_smb_ids:
+            raise HTTPException(
+                status_code=400,
+                detail="No walkthrough SMBs found for this banker_id.",
+            )
+
+    norm = await normalize_demo_leads()
+    deleted = await delete_pending_leads_for_smbs(target_smb_ids)
+
+    cleared: list[str] = []
+    if clear_conversations:
+        for sid in target_smb_ids:
+            try:
+                await clear_conversations_for_smb(sid)
+                cleared.append(sid)
+            except Exception:
+                pass
+
+    return WalkthroughDemoResetOut(
+        dedupe_pending_removed=norm["pending_removed"],
+        dedupe_terminal_removed=norm["terminal_removed"],
+        dedupe_events_removed=norm["events_removed"],
+        pending_leads_deleted=deleted,
+        conversations_cleared=cleared,
+    )
+
+
+@router.post("/demo/normalize-leads")
+async def normalize_leads_endpoint():
+    """Collapse duplicate lead rows/events (safe to call anytime)."""
+    return await normalize_demo_leads()
 
 
 @router.get("/portfolio", response_model=PortfolioOut)
