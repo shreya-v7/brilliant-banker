@@ -7,9 +7,6 @@ import Login from './pages/Login'
 import Marketing from './pages/Marketing'
 import Scene from './pages/Scene'
 import ScreenLinks from './pages/ScreenLinks'
-import TestGuide from './pages/TestGuide'
-import AdminResults from './pages/AdminResults'
-import SmbFeedback from './pages/SmbFeedback'
 import Dashboard from './pages/Dashboard'
 import Chat from './pages/Chat'
 import Activity from './pages/Activity'
@@ -25,15 +22,8 @@ import BankerClients from './pages/banker/BankerClients'
 import BankerCreditReview from './pages/banker/BankerCreditReview'
 import BankerSMBProfile from './pages/banker/BankerSMBProfile'
 import BankerProfile from './pages/banker/BankerProfile'
-import BankerFeedback from './pages/BankerFeedback'
 import { login, bankerLogin } from './api'
-import {
-  MAYA_SMB_ID,
-  PRIYA_SMB_ID,
-  SARAH_BANKER_ID,
-  profileAllowsUserTesting,
-} from './constants/demo'
-import { useEffectiveUserTestingMode } from './hooks/useUserTestingMode'
+import { MAYA_SMB_ID, PRIYA_SMB_ID, SARAH_BANKER_ID } from './constants/demo'
 
 function BankerGate({ user, onLogin, children }) {
   if (!user) return <Login defaultMode="banker" onLogin={onLogin} />
@@ -86,33 +76,6 @@ export default function App() {
       setUser(u)
       const sp = new URLSearchParams(location.search)
       const next = sp.get('next')
-      const testing = sp.get('testing')
-      if (
-        next &&
-        testing &&
-        u.role === 'smb' &&
-        next.startsWith('/business')
-      ) {
-        if (u.smb_id === MAYA_SMB_ID || u.smb_id === PRIYA_SMB_ID) {
-          navigate('/business', { replace: true })
-          return
-        }
-        navigate(`${next}?testing=true`, { replace: true })
-        return
-      }
-      if (
-        next &&
-        testing &&
-        u.role === 'banker' &&
-        next.startsWith('/banker')
-      ) {
-        if (u.banker_id === SARAH_BANKER_ID) {
-          navigate('/banker', { replace: true })
-          return
-        }
-        navigate(`${next}?testing=true`, { replace: true })
-        return
-      }
       if (next && ((u.role === 'smb' && next.startsWith('/business')) || (u.role === 'banker' && next.startsWith('/banker')))) {
         navigate(next, { replace: true })
         return
@@ -160,16 +123,10 @@ export default function App() {
         user.banker_id === SARAH_BANKER_ID &&
         (showDemo || isBankerPath || isBusinessPath)))
 
-  const effectiveUserTesting = useEffectiveUserTestingMode(user)
-
   return (
     <>
       <Routes>
         <Route path="/links" element={<ScreenLinks />} />
-        <Route path="/admin/results" element={<AdminResults />} />
-        <Route path="/test/guide" element={<TestGuide />} />
-        <Route path="/test/smb" element={<Navigate to="/business?next=/business/feedback&testing=1" replace />} />
-        <Route path="/test/banker" element={<Navigate to="/banker?next=/banker/feedback&testing=1" replace />} />
 
         <Route
           path="/scene"
@@ -222,16 +179,6 @@ export default function App() {
             <BankerGate user={user} onLogin={handleLogin}>
               <BankerLayout user={user}>
                 <BankerCreditReview user={user} />
-              </BankerLayout>
-            </BankerGate>
-          }
-        />
-        <Route
-          path="/banker/feedback"
-          element={
-            <BankerGate user={user} onLogin={handleLogin}>
-              <BankerLayout user={user}>
-                <BankerFeedback user={user} />
               </BankerLayout>
             </BankerGate>
           }
@@ -297,16 +244,6 @@ export default function App() {
             </SmbGate>
           }
         />
-        <Route
-          path="/business/feedback"
-          element={
-            <SmbGate user={user} onLogin={handleLogin} onShowScene={() => navigate('/scene')}>
-              <Layout user={user}>
-                <SmbFeedback user={user} />
-              </Layout>
-            </SmbGate>
-          }
-        />
 
         <Route
           path="/"
@@ -334,31 +271,18 @@ export default function App() {
         />
       </Routes>
 
-      {inAppShell && (
+      {inAppShell && walkthroughEligible && !showDemo && (
         <div className="fixed bottom-6 right-6 z-[60] flex flex-col gap-2 items-end pointer-events-none">
-          {profileAllowsUserTesting(user) && (
-            <button
-              type="button"
-              onClick={() => navigate('/test/guide')}
-              className="pointer-events-auto min-h-[48px] px-5 py-3 rounded-full text-white text-sm font-bold
-                         shadow-xl border-[3px] border-white ring-2 ring-[#E35205]/90 ring-offset-2 ring-offset-white/20"
-              style={{ backgroundColor: '#002D5F' }}
-            >
-              User Testing
-            </button>
-          )}
-          {walkthroughEligible && !showDemo && !effectiveUserTesting && (
-            <button
-              type="button"
-              onClick={() => setShowDemo(true)}
-              className="pointer-events-auto flex items-center gap-1.5 bg-white/95 backdrop-blur border border-pnc-gray-200
-                         text-pnc-navy text-xs font-semibold px-4 py-2.5 rounded-full shadow-md
-                         active:opacity-80 transition-opacity"
-            >
-              <Sparkles size={13} className="text-pnc-orange" />
-              Walkthrough
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setShowDemo(true)}
+            className="pointer-events-auto flex items-center gap-1.5 bg-white/95 backdrop-blur border border-pnc-gray-200
+                       text-pnc-navy text-xs font-semibold px-4 py-2.5 rounded-full shadow-md
+                       active:opacity-80 transition-opacity"
+          >
+            <Sparkles size={13} className="text-pnc-orange" />
+            Walkthrough
+          </button>
         </div>
       )}
 

@@ -1,40 +1,19 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useState, useEffect, useRef } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import RMStreamFeed from './RMStreamFeed'
-import { Bell, Zap, Landmark, LayoutDashboard, Users, CreditCard, User, ChevronRight, Menu, X, Star } from 'lucide-react'
+import { Bell, Zap, Landmark, LayoutDashboard, Users, CreditCard, User, ChevronRight, Menu, X } from 'lucide-react'
 import { connectRMStream } from '../api'
-import { useEffectiveUserTestingMode } from '../hooks/useUserTestingMode'
-import { profileAllowsUserTesting } from '../constants/demo'
 
-const ALL_BANKER_NAV = [
+const BANKER_NAV = [
   { path: '/banker', icon: LayoutDashboard, label: 'Dashboard' },
   { path: '/banker/clients', icon: Users, label: 'Clients' },
   { path: '/banker/credit', icon: CreditCard, label: 'Credit Review' },
-  { path: '/banker/feedback', icon: Star, label: 'Feedback' },
   { path: '/banker/profile', icon: User, label: 'My Profile' },
 ]
-
-function navigateBankerWithTesting(navigate, path, userTesting) {
-  if (!userTesting || path.includes('testing=')) {
-    navigate(path)
-    return
-  }
-  const sep = path.includes('?') ? '&' : '?'
-  navigate(`${path}${sep}testing=true`)
-}
 
 export default function BankerLayout({ user, children }) {
   const { pathname } = useLocation()
   const navigate = useNavigate()
-  const userTesting = useEffectiveUserTestingMode(user)
-
-  const navItems = useMemo(
-    () =>
-      userTesting
-        ? ALL_BANKER_NAV
-        : ALL_BANKER_NAV.filter((i) => i.path !== '/banker/feedback'),
-    [userTesting],
-  )
   const [showFeed, setShowFeed] = useState(false)
   const [showMobileNav, setShowMobileNav] = useState(false)
   const [unread, setUnread] = useState(0)
@@ -79,14 +58,8 @@ export default function BankerLayout({ user, children }) {
   }
 
   const currentTitle =
-    navItems.find((n) => n.path === pathname)?.label ||
+    BANKER_NAV.find((n) => n.path === pathname)?.label ||
     (pathname.startsWith('/banker/clients/') ? 'Client Profile' : 'Brilliant Banker')
-
-  const surveyBack =
-    profileAllowsUserTesting(user) &&
-    typeof sessionStorage !== 'undefined' &&
-    sessionStorage.getItem('bb-survey-active') === 'banker' &&
-    !pathname.includes('/feedback')
 
   return (
     <div className="flex h-dvh bg-pnc-gray-50">
@@ -120,13 +93,13 @@ export default function BankerLayout({ user, children }) {
 
         {/* Nav items */}
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {navItems.map(({ path, icon: Icon, label }) => {
+          {BANKER_NAV.map(({ path, icon: Icon, label }) => {
             const active = pathname === path || (path !== '/banker' && pathname.startsWith(path + '/'))
             return (
               <button
                 key={path}
                 type="button"
-                onClick={() => navigateBankerWithTesting(navigate, path, userTesting)}
+                onClick={() => navigate(path)}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                   active
                     ? 'bg-white/10 text-white'
@@ -218,13 +191,13 @@ export default function BankerLayout({ user, children }) {
         {/* Mobile bottom nav (only shown on small screens) */}
         <nav className="lg:hidden bg-white border-t border-pnc-gray-200 safe-bottom shrink-0">
           <div className="flex items-center justify-around h-14">
-            {navItems.map(({ path, icon: Icon, label }) => {
+            {BANKER_NAV.map(({ path, icon: Icon, label }) => {
               const active = pathname === path
               return (
                 <button
                   key={path}
                   type="button"
-                  onClick={() => navigateBankerWithTesting(navigate, path, userTesting)}
+                  onClick={() => navigate(path)}
                   className={`flex flex-col items-center gap-0.5 w-16 py-1 transition-colors ${
                     active ? 'text-pnc-navy' : 'text-pnc-gray-500'
                   }`}
@@ -270,14 +243,14 @@ export default function BankerLayout({ user, children }) {
               </div>
             </div>
             <nav className="flex-1 px-3 py-4 space-y-1">
-              {navItems.map(({ path, icon: Icon, label }) => {
+              {BANKER_NAV.map(({ path, icon: Icon, label }) => {
                 const active = pathname === path || (path !== '/banker' && pathname.startsWith(path + '/'))
                 return (
                   <button
                     key={path}
                     type="button"
                     onClick={() => {
-                      navigateBankerWithTesting(navigate, path, userTesting)
+                      navigate(path)
                       setShowMobileNav(false)
                     }}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
@@ -340,16 +313,6 @@ export default function BankerLayout({ user, children }) {
             <ChevronRight size={16} className="text-pnc-gray-400 shrink-0 mt-1" />
           </div>
         </div>
-      )}
-
-      {surveyBack && (
-        <Link
-          to="/banker/feedback?testing=true"
-          className="fixed z-[55] left-1/2 -translate-x-1/2 bottom-20 min-h-[44px] px-5 py-2.5 rounded-full text-white text-sm font-bold shadow-lg lg:left-auto lg:translate-x-0 lg:right-8 lg:bottom-8"
-          style={{ backgroundColor: '#002D5F' }}
-        >
-          Back to Survey
-        </Link>
       )}
 
       <RMStreamFeed isOpen={showFeed} onClose={() => setShowFeed(false)} events={events} />

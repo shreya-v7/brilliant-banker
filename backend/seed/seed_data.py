@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 # ── Demo bankers ──────────────────────────────────────────────────────────────
 
-# Sarah = guided walkthrough / skit RM only. All others = user testing & default login (no overlap).
+# Sarah = guided walkthrough / skit RM only. All others = default login (no overlap).
 MOCK_BANKERS = [
     {
         "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",

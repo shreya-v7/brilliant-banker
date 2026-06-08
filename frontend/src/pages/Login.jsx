@@ -23,9 +23,6 @@ import {
 export default function Login({ onLogin, onShowMarketing, onShowScene, defaultMode }) {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  /** User-testing entry uses ?testing=1 / ?testing=true. */
-  const isUserTestingFlow =
-    searchParams.get('testing') === '1' || searchParams.get('testing') === 'true'
   /** SMB walkthrough entry (?walkthrough=1): only Maya & Priya appear in the list. */
   const walkthroughEntry =
     searchParams.get('walkthrough') === '1' || searchParams.get('walkthrough') === 'true'
@@ -54,16 +51,14 @@ export default function Login({ onLogin, onShowMarketing, onShowScene, defaultMo
   const smbPickList = useMemo(() => {
     if (!users.length) return []
     if (walkthroughEntry) return users.filter((u) => isWalkthroughSmb(u.smb_id))
-    if (isUserTestingFlow) return users.filter((u) => !isWalkthroughSmb(u.smb_id))
     return users.filter((u) => !isWalkthroughSmb(u.smb_id))
-  }, [users, walkthroughEntry, isUserTestingFlow])
+  }, [users, walkthroughEntry])
 
   const bankerPickList = useMemo(() => {
     if (!bankers.length) return []
     if (walkthroughBankerEntry) return bankers.filter((b) => b.banker_id === SARAH_BANKER_ID)
-    if (isUserTestingFlow) return bankers.filter((b) => !isWalkthroughBanker(b.banker_id))
     return bankers.filter((b) => !isWalkthroughBanker(b.banker_id))
-  }, [bankers, walkthroughBankerEntry, isUserTestingFlow])
+  }, [bankers, walkthroughBankerEntry])
 
   const handleSMBLogin = async (smbId) => {
     setLoggingIn(smbId)
@@ -198,7 +193,7 @@ export default function Login({ onLogin, onShowMarketing, onShowScene, defaultMo
               </div>
             </button>
 
-            {/* Banker Card — Sarah Chen walkthrough RM only (other RMs: user testing entry) */}
+            {/* Banker Card — Sarah Chen walkthrough RM only */}
             <button
               type="button"
               onClick={() => navigate('/banker?walkthrough=1')}
@@ -340,8 +335,7 @@ export default function Login({ onLogin, onShowMarketing, onShowScene, defaultMo
               ) : (
                 <div className="space-y-2">
                   {smbPickList.map((u) => {
-                    const isSkitActorRow =
-                      walkthroughEntry && !isUserTestingFlow && isWalkthroughSmb(u.smb_id)
+                    const isSkitActorRow = walkthroughEntry && isWalkthroughSmb(u.smb_id)
                     return (
                       <button
                         key={u.smb_id}

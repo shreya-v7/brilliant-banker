@@ -151,22 +151,3 @@ export function connectRMStream(onEvent) {
 
   return source;
 }
-
-// ── User testing surveys ─────────────────────────────────────────────────────
-
-export function submitSurvey(payload) {
-  return request('/survey/submit', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
-}
-
-export function getSurveyResults(password) {
-  const q = new URLSearchParams({ password });
-  return request(`/survey/results?${q.toString()}`);
-}
-
-export function getSurveyExportUrl(password) {
-  const q = new URLSearchParams({ password });
-  return `/api/survey/export?${q.toString()}`;
-}

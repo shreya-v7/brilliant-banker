@@ -73,8 +73,6 @@ export default function ScreenLinks() {
             <LinkRow to="/links" title="This page - all screen URLs" />
             <LinkRow to="/scene" title="Customer discovery skit (characters)" />
             <LinkRow to="/marketing" title="Marketing" />
-            <LinkRow to="/test/guide" title="User testing guide" hint="External testers start here" />
-            <LinkRow to="/admin/results" title="Survey results (password)" />
           </div>
         </section>
 
@@ -86,11 +84,6 @@ export default function ScreenLinks() {
             <LinkRow to="/business/forms" title="Forms" />
             <LinkRow to="/business/activity" title="Activity" hint="Credit & request status" />
             <LinkRow to="/business/profile" title="Profile" hint="Business brief & details" />
-            <LinkRow
-              to="/business/feedback?testing=true"
-              title="User testing survey (SMB)"
-              hint="Hidden from app nav unless you are in a user-testing session"
-            />
           </div>
         </section>
 
@@ -105,11 +98,6 @@ export default function ScreenLinks() {
               hint="Replace UUID for another SMB from seed data"
             />
             <LinkRow to="/banker/credit" title="Credit review" />
-            <LinkRow
-              to="/banker/feedback?testing=true"
-              title="User testing survey (RM)"
-              hint="Hidden from app nav unless you are in a user-testing session"
-            />
             <LinkRow to="/banker/profile" title="Banker profile" />
           </div>
         </section>

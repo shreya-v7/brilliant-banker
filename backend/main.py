@@ -13,7 +13,7 @@ from backend.db.conversations import clear_all_conversations
 from backend.db.database import init_db
 from backend.db.lead_utils import normalize_demo_leads
 from backend.models.schemas import Settings
-from backend.routers import banker, chat, smb, stream, survey
+from backend.routers import banker, chat, smb, stream
 
 logging.basicConfig(
     level=logging.INFO,
@@ -80,7 +80,6 @@ app.include_router(chat.router)
 app.include_router(banker.router)
 app.include_router(smb.router)
 app.include_router(stream.router)
-app.include_router(survey.router)
 
 
 @app.get("/health", tags=["health"])
