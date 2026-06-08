@@ -16,7 +16,12 @@ _client: anthropic.AsyncAnthropic | None = None
 def get_client() -> anthropic.AsyncAnthropic:
     global _client
     if _client is None:
-        _client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
+        api_key = (settings.ANTHROPIC_API_KEY or "").strip()
+        if not api_key or api_key == "your-key-here":
+            raise RuntimeError(
+                "ANTHROPIC_API_KEY is missing. Set ANTHROPIC_API_KEY=sk-ant-... in the project root .env file."
+            )
+        _client = anthropic.AsyncAnthropic(api_key=api_key)
     return _client
 
 

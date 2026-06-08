@@ -147,6 +147,18 @@ class Conversation(Base):
     created_at = Column(DateTime, server_default=func.now())
 
 
+class UserFeedback(Base):
+    __tablename__ = "user_feedback"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    role = Column(String(10), nullable=False)
+    screen_path = Column(String(500), nullable=False)
+    respondent_name = Column(String(500), nullable=False)
+    rating = Column(Integer, nullable=True)
+    comment = Column(Text, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+
+
 def _sqlite_add_smbs_assigned_banker_id(connection) -> None:
     """Light migration for existing SQLite DBs created before assigned_banker_id."""
     from sqlalchemy import inspect, text

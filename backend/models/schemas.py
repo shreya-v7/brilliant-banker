@@ -4,15 +4,19 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
+from pathlib import Path
+
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
+
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str = ""
     DATABASE_URL: str = "sqlite+aiosqlite:///./data/brilliantbanker.db"
 
-    model_config = {"env_file": ".env", "extra": "ignore"}
+    model_config = {"env_file": str(_PROJECT_ROOT / ".env"), "extra": "ignore"}
 
 
 # --- Agent state ---
