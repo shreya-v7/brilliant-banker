@@ -2,7 +2,7 @@
 title: Brilliant Banker
 emoji: 🏦
 colorFrom: blue
-colorTo: orange
+colorTo: indigo
 sdk: docker
 app_port: 7860
 pinned: false
