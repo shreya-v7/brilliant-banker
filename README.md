@@ -106,7 +106,7 @@ React App → POST /api/chat → LangGraph Agent → Claude → Response
 | ML models | XGBoost, Prophet, Isolation Forest | **Rule-based** (stability × history × revenue) |
 | LLM | Claude with compliance guardrails | **Claude** (same, no guardrails) |
 | Auth | Biometric + OAuth | **Mock login** (pick a demo user) |
-| Deployment | Kubernetes cluster | **Single Railway service** |
+| Deployment | Kubernetes cluster | **Hugging Face Space (Docker)** |
 | Data | 928K real clients | **5 seeded demo SMBs** |
 
 **What's real:** The LangGraph 4-node AI pipeline, Claude integration, full SMB + Banker UIs, credit pre-qualification scoring, auto-escalation logic, real-time SSE event stream, and append-only decision audit trail.
@@ -275,17 +275,16 @@ Visit **http://localhost:5173**. Demo data auto-seeds on first startup.
 
 ---
 
-## Deploy to Railway
+## Deploy to Hugging Face
 
-Single service, zero database setup  - just one env var.
+Single Docker Space, zero database setup — set `ANTHROPIC_API_KEY` as a Space secret.
 
-1. Go to [railway.app](https://railway.app) → create project → **"+ New"** → **"GitHub Repo"** → select this repo
-2. Railway detects `railway.json` and builds automatically
-3. Go to **Variables** tab → add `ANTHROPIC_API_KEY`
-4. Go to **Settings** → generate a public domain
-5. Visit your `https://*.up.railway.app` URL  - auto-seeds demo data on first boot
+1. Create a Space at [huggingface.co/new-space](https://huggingface.co/new-space) → SDK: **Docker**
+2. Push this repo (or sync `backend/`, `frontend/`, `Dockerfile`, `.dockerignore`)
+3. In Space **Settings → Repository secrets**, add `ANTHROPIC_API_KEY`
+4. The Space builds from `Dockerfile` and serves on port **7860**
 
-**Cost:** Railway free tier + ~$0.02-0.05 per conversation in Anthropic API calls.
+**Cost:** Hugging Face free CPU tier + ~$0.02–0.05 per conversation in Anthropic API calls.
 
 ---
 
@@ -308,8 +307,8 @@ Tap the floating **Demo** button on any screen for a guided step-by-step walkthr
 
 ```
 brilliant-banker/
-├── Dockerfile.railway         # Production build (frontend + backend in one image)
-├── railway.json               # Railway deployment config
+├── Dockerfile                 # Hugging Face / Docker production build
+├── .dockerignore
 ├── .env.example               # Just needs ANTHROPIC_API_KEY
 ├── frontend/
 │   ├── package.json
