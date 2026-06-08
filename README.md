@@ -109,7 +109,64 @@ React App → POST /api/chat → LangGraph Agent → Claude → Response
 | Deployment | Kubernetes cluster | **Hugging Face Space (Docker)** |
 | Data | 928K real clients | **5 seeded demo SMBs** |
 
-**What's real:** The LangGraph 4-node AI pipeline, Claude integration, full SMB + Banker UIs, credit pre-qualification scoring, auto-escalation logic, real-time SSE event stream, and append-only decision audit trail.
+**What's real:** The LangGraph 4-node AI pipeline, Claude integration, full SMB + Banker UIs, credit pre-qualification scoring, auto-escalation logic, real-time SSE event stream, append-only decision audit trail, and user-testing feedback collection.
+
+---
+
+## Prototype Architecture (This Repo)
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Browser (React + Vite)                                                  │
+│  Role picker │ SMB mobile shell │ Banker CRM │ Walkthrough │ Feedback   │
+└──────────────────────────────┬──────────────────────────────────────────┘
+                               │ REST + SSE (/api/*, /banker/stream)
+                               ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  FastAPI (backend/main.py)                                               │
+│  ┌─────────────┐  ┌──────────────┐  ┌─────────────┐  ┌──────────────┐ │
+│  │ chat.py     │  │ banker.py    │  │ smb.py      │  │ feedback.py  │ │
+│  │ auth + AI   │  │ leads/CRM    │  │ profiles    │  │ user testing │ │
+│  └──────┬──────┘  └──────────────┘  └─────────────┘  └──────────────┘ │
+│         │                                                                │
+│         ▼                                                                │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │ LangGraph agent (graph.py)                                        │   │
+│  │ intent_classifier → tool_router → reply_composer → escalation     │   │
+│  └──────────────────────────────┬───────────────────────────────────┘   │
+│                                 │ Claude API                             │
+│  ┌──────────────────────────────┴───────────────────────────────────┐   │
+│  │ SQLite (data/brilliantbanker.db)                                  │   │
+│  │ SMBs, bankers, transactions, leads, lead_events, conversations,   │   │
+│  │ banker_notes, user_feedback                                       │   │
+│  └───────────────────────────────────────────────────────────────────┘   │
+│  In-memory: RM event stream (stream_service.py), session phone map       │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Tech stack (POC)
+
+| Layer | Stack |
+|-------|--------|
+| Frontend | React 18, Vite, Tailwind, React Router |
+| Backend | FastAPI, Uvicorn, SQLAlchemy (async), aiosqlite |
+| AI | LangGraph 4-node pipeline, Anthropic Claude |
+| Database | SQLite file at `data/brilliantbanker.db` (auto-created + seeded) |
+| Real-time | Server-Sent Events (`GET /banker/stream`) via in-memory pub/sub |
+| Production deploy | Docker (`Dockerfile`) on Hugging Face Spaces (port 7860) |
+| Local dev | Backend `:8000`, Vite frontend `:5173` (proxies API to backend) |
+
+### AI chat pipeline
+
+```
+POST /api/chat
+    → LangGraph agent
+        ├─ intent_classifier (Claude)
+        ├─ tool_router → cash_flow | credit_prequal | faq | escalate
+        ├─ reply_composer (Claude)
+        └─ escalation_checker (auto-escalate credit requests > $10K)
+    → SSE event to banker stream (if escalated)
+```
 
 ---
 
@@ -231,47 +288,147 @@ The AI advisor is bundled into PNC business accounts at tiers that make sense re
 
 ## App Screens
 
-### SMB Owner (mobile)
+### Public / entry
 
-| Screen | What it does |
-|--------|-------------|
-| **Login** | Role picker (Business Owner vs PNC Banker), then profile selector |
-| **Dashboard** | Balances, 30-day cash flow, recent transactions, AI assistant card |
-| **Chat** | AI chatbot with typing indicator, intent badges, suggested prompts, RM card on escalation |
-| **Activity** | Track credit requests  - filter by status, expand for details, see RM notifications |
-| **Profile** | Business details, financial stats, AI business brief |
+| URL | Screen | Notes |
+|-----|--------|-------|
+| `/` | **Home** | Role picker; always accessible (no auto-redirect when signed in) |
+| `/links` | **All screen URLs** | Copyable deep links for every route |
+| `/scene` | **Customer discovery skit** | Maya & Priya story; optional entry to SMB app |
+| `/marketing` | **Marketing page** | Product overview |
 
-### Banker / RM (desktop)
+### Sign-in (pick a demo profile)
 
-| Screen | What it does |
-|--------|-------------|
-| **Dashboard** | Portfolio metrics, credit pipeline, priority queue, health donut, at-risk clients |
-| **My Clients** | All SMBs sorted by stability, drill into full profile |
-| **Credit Review** | Pending leads with AI pre-call brief, conversation playbook, approve/decline/refer |
-| **Client Profile** | 4-tab view: Overview, Transactions, Credit History, Banker Notes |
+| URL | Screen | Notes |
+|-----|--------|-------|
+| `/signin/smb` | **SMB sign-in** | All demo business owners |
+| `/signin/smb?walkthrough=1` | **SMB walkthrough sign-in** | Maya Patel & Priya Rao only |
+| `/signin/banker` | **RM sign-in** | All demo relationship managers |
+| `/signin/banker?walkthrough=1` | **RM walkthrough sign-in** | Sarah Chen only |
+
+Protected app routes redirect here when signed out, then return you to the original URL after login (`?next=/business/chat`).
+
+### SMB owner (mobile shell)
+
+| URL | Tab | What it does |
+|-----|-----|--------------|
+| `/business` | Home | Balances, cash signal, transactions, AI assistant card |
+| `/business/chat` | Chat | AI assistant, intent badges, RM escalation card |
+| `/business/forms` | Forms | Pre-filled business forms demo |
+| `/business/activity` | Activity | Credit request status + RM notifications |
+| `/business/profile` | Profile | Stats, AI business brief, integrations, guides |
+
+### Banker / RM (desktop portal)
+
+| URL | Nav | What it does |
+|-----|-----|--------------|
+| `/banker` | Dashboard | Portfolio metrics, priority queue, pipeline |
+| `/banker/clients` | Clients | All SMBs sorted by stability |
+| `/banker/clients/:id` | Client detail | Full SMB profile (transactions, credit, notes) |
+| `/banker/credit` | Credit Review | AI brief, scorecard, approve / decline / refer |
+| `/banker/profile` | My Profile | RM stats and session controls |
+
+### In-app overlays (not separate URLs)
+
+| Feature | Where | What it does |
+|---------|-------|--------------|
+| **Walkthrough** | Floating button (bottom-right, above Feedback) | Guided demo for Maya/Priya → Sarah Chen handoff |
+| **User testing feedback** | Floating **Feedback** tab (bottom-right of screen, outside phone mockup) | Optional 1–5 rating + comment; saves to SQLite |
+| **Sign out** | Top session strip on every app screen | Ends demo session and returns to `/` — required before switching SMB ↔ RM |
 
 ---
 
 ## Setup (local dev)
 
+**Requirements:** Python **3.13** (not 3.14), Node.js 20+, Anthropic API key in `.env`
+
 ```bash
 # 1. Clone and configure
 cp .env.example .env
-# Edit .env  - add your ANTHROPIC_API_KEY
+# Edit .env — set ANTHROPIC_API_KEY=sk-ant-...  (must include the variable name)
 
-# 2. Start backend
-cd backend
-pip install -r requirements.txt
-cd ..
+# 2. Backend (terminal 1 — from project root)
+python3.13 -m venv .venv
+source .venv/bin/activate
+pip install -r backend/requirements.txt
 uvicorn backend.main:app --reload --port 8000
+# Or without activating venv:
+# .venv/bin/uvicorn backend.main:app --reload --port 8000
 
-# 3. Start frontend (separate terminal)
+# 3. Frontend (terminal 2)
 cd frontend
 npm install
 npm run dev
 ```
 
-Visit **http://localhost:5173**. Demo data auto-seeds on first startup.
+Open **http://localhost:5173**. Demo data auto-seeds on first backend startup.
+
+**Verify backend:** `curl http://localhost:8000/health` → `{"status":"ok"}`
+
+**Common issues**
+
+| Problem | Fix |
+|---------|-----|
+| `ModuleNotFoundError: sqlalchemy` | Activate `.venv` or use `.venv/bin/uvicorn` — don't use system Python |
+| `Address already in use` (port 8000) | `lsof -ti :8000 \| xargs kill -9` then restart backend |
+| Chat fails / auth error | Check `.env` has `ANTHROPIC_API_KEY=...` on one line (not just the key alone) |
+| Vite proxy errors | Backend must be running on port 8000 |
+
+### Docker (production-like, single container)
+
+```bash
+docker build -t brilliant-banker .
+docker run --rm -p 7860:7860 --env-file .env brilliant-banker
+```
+
+Open **http://localhost:7860** (frontend + API served together).
+
+---
+
+## User testing feedback
+
+Testers navigate the app normally. Feedback is **not** a separate route — it is a floating **Feedback** button at the **bottom-right of the browser window** (outside the SMB phone frame), visible after sign-in on both SMB and RM screens.
+
+1. Sign in as any demo user
+2. Use the app (chat, credit review, etc.)
+3. Click **Feedback** → optional 1–5 rating + comment → **Submit feedback**
+
+Submissions are stored in SQLite table `user_feedback` with: role, respondent name, screen path, rating, comment, timestamp.
+
+### View feedback results (local)
+
+```bash
+sqlite3 data/brilliantbanker.db "
+  SELECT datetime(created_at), role, respondent_name, screen_path, rating, comment
+  FROM user_feedback
+  ORDER BY created_at DESC;
+"
+```
+
+On Hugging Face Spaces, data lives inside the container filesystem (`data/brilliantbanker.db`) and resets on redeploy unless you attach persistent storage.
+
+---
+
+## API overview
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/health` | Health check |
+| `GET` | `/api/auth/users` | List demo SMB profiles |
+| `GET` | `/api/auth/bankers` | List demo RM profiles |
+| `POST` | `/api/auth/login` | SMB mock login |
+| `POST` | `/api/auth/banker-login` | RM mock login |
+| `POST` | `/api/chat` | AI chat (LangGraph + Claude) |
+| `GET` | `/api/chat/history/:smb_id` | Chat history |
+| `GET` | `/banker/stream` | SSE live RM activity feed |
+| `GET` | `/banker/portfolio` | RM portfolio summary |
+| `GET` | `/banker/leads` | Credit pipeline / priority queue |
+| `POST` | `/banker/leads/:id/decide` | Approve / decline / refer |
+| `GET` | `/smb/:id/profile` | SMB profile + AI brief |
+| `GET` | `/smb/:id/transactions` | Transaction history |
+| `POST` | `/api/feedback/submit` | Save user-testing feedback |
+
+Interactive API docs (local): **http://localhost:8000/docs**
 
 ---
 
@@ -292,14 +449,18 @@ Single Docker Space, zero database setup — set `ANTHROPIC_API_KEY` as a Space 
 
 ### End-to-End Story
 
-1. **SMB side**: Log in as **Maya Patel** (Pittsburgh floral studio; seasonal peaks, real transaction history in seed data). Open **Chat**, ask for a **$25K** credit line (matches the guided demo prompt).
-2. **AI escalates**: LangGraph runs pre-qual for amounts above the threshold, surfaces scored factors, creates a lead with urgency for the RM queue.
-3. **Banker side**: Log in as **Sarah Chen**; Maya’s request appears at the top of the **Priority Queue**.
-4. **Review**: Open **Credit Review**, read the AI brief, scorecard, and playbook (continuity for the “new banker every year” problem the skit calls out).
-5. **Decide**: Approve (or decline/refer); Claude drafts the notification.
-6. **SMB sees result**: Maya’s **Activity** tab updates in real time, addressing the skit’s “slow, vague no” pain with visible status.
+1. Open **http://localhost:5173/signin/smb?walkthrough=1** → sign in as **Maya Patel**
+2. Open **Chat** → ask for a **$25K** credit line
+3. AI runs pre-qual, escalates, creates a lead in the RM queue
+4. **Sign out** (top session strip) → home → **/signin/banker?walkthrough=1** → sign in as **Sarah Chen**
+5. Open **Credit Review** → read AI brief → approve / decline / refer
+6. Sign back in as Maya → **Activity** tab shows the decision in real time
 
-Tap the floating **Demo** button on any screen for a guided step-by-step walkthrough tied to the **SMB Banking Pain Points** customer-discovery skit (Maya & Priya, Pittsburgh coffee shop).
+Tap the floating **Walkthrough** button for a step-by-step guide. Use **/links** for direct URLs to any screen.
+
+### Switching roles
+
+Only one demo user session is active at a time. **Sign out** before switching between Business Owner and RM, or you may see the wrong role or stale state. Sign out returns you to `/` (home).
 
 ---
 
@@ -309,46 +470,49 @@ Tap the floating **Demo** button on any screen for a guided step-by-step walkthr
 brilliant-banker/
 ├── Dockerfile                 # Hugging Face / Docker production build
 ├── .dockerignore
-├── .env.example               # Just needs ANTHROPIC_API_KEY
+├── .env.example               # Template — copy to .env and add your API key
 ├── frontend/
 │   ├── package.json
 │   ├── vite.config.js         # Dev proxy → localhost:8000
 │   ├── tailwind.config.js     # PNC brand colors (navy + orange)
 │   └── src/
-│       ├── App.jsx            # Role-based routing (SMB vs Banker)
-│       ├── api.js             # All API calls + SSE stream
-│       ├── components/        # Layout shells, nav bars, demo guide, SSE feed
+│       ├── App.jsx            # Routes, auth gates, walkthrough + feedback overlays
+│       ├── api.js             # REST + SSE client
+│       ├── components/
+│       │   ├── Layout.jsx           # SMB phone shell
+│       │   ├── BankerLayout.jsx     # RM sidebar + main layout
+│       │   ├── FeedbackPanel.jsx    # Floating user-testing feedback tab
+│       │   ├── SessionControls.jsx  # Sign-out strip + session banner
+│       │   ├── DemoGuide.jsx        # Walkthrough overlay
+│       │   └── RMStreamFeed.jsx     # Live banker event feed
 │       └── pages/
-│           ├── Login.jsx      # Role picker + profile selector
-│           ├── Dashboard.jsx  # SMB home
-│           ├── Chat.jsx       # AI chatbot
-│           ├── Activity.jsx   # Credit request tracker
-│           ├── Profile.jsx    # Business profile + AI brief
-│           └── banker/        # 5 banker screens (dashboard, clients, credit, profile, SMB detail)
+│           ├── Login.jsx            # Home + sign-in views
+│           ├── ScreenLinks.jsx      # All route URLs
+│           ├── Dashboard.jsx, Chat.jsx, Activity.jsx, Profile.jsx, Forms.jsx
+│           └── banker/              # RM dashboard, clients, credit, profile
 └── backend/
     ├── main.py                # FastAPI app, lifespan, static file serving
-    ├── requirements.txt       # 12 dependencies
+    ├── requirements.txt
     ├── agent/
     │   ├── graph.py           # LangGraph 4-node pipeline
     │   ├── tools.py           # cash_flow, credit_prequal, faq, escalate
-    │   └── prompts.py         # All Claude prompts
+    │   └── prompts.py         # Claude prompts
     ├── services/
     │   ├── claude_service.py  # Anthropic Claude wrapper
     │   ├── notify_service.py  # Decision notification drafting
     │   └── stream_service.py  # In-memory pub/sub for SSE
     ├── db/
-    │   ├── database.py        # SQLAlchemy models + SQLite engine (7 tables)
-    │   ├── conversations.py   # Chat history (SQLite)
+    │   ├── database.py        # SQLAlchemy models + SQLite (8 tables)
+    │   ├── conversations.py   # Chat history
     │   └── phone_map.py       # In-memory session mapping
-    ├── models/
-    │   └── schemas.py         # Pydantic models + Settings
+    ├── models/schemas.py      # Pydantic models + Settings (.env)
     ├── routers/
-    │   ├── chat.py            # POST /api/chat + auth endpoints
+    │   ├── chat.py            # /api/chat + mock auth
     │   ├── banker.py          # Portfolio, leads, decisions, notes
-    │   ├── smb.py             # SMB profile + transactions + escalations
-    │   └── stream.py          # GET /banker/stream (SSE)
-    └── seed/
-        └── seed_data.py       # 5 SMBs, 3 bankers, 80+ transactions, leads, notes
+    │   ├── smb.py             # SMB profile + transactions
+    │   ├── stream.py          # GET /banker/stream (SSE)
+    │   └── feedback.py        # POST /api/feedback/submit
+    └── seed/seed_data.py      # 5 SMBs, 5 bankers, transactions, leads
 ```
 
 ---
@@ -356,9 +520,12 @@ brilliant-banker/
 ## Design Decisions
 
 - **PNC brand theme**: Navy (#002D5F) and orange (#E35205), mobile-first responsive layout
+- **Dedicated sign-in URLs**: `/signin/smb` and `/signin/banker` separate from app routes so browser back and bookmarks work
+- **Home always at `/`**: No auto-redirect when signed in — use **Sign out** to switch demo users
 - **Append-only audit trail**: `lead_events` table records every banker action
-- **All AI responses via Claude**: Chat replies, decision notifications, business briefs  - no hardcoded strings
+- **All AI responses via Claude**: Chat replies, decision notifications, business briefs — no hardcoded strings
 - **Auto-escalation**: Credit requests over $10K automatically create a banker lead
 - **Multi-turn context**: Last 10 messages provide conversational continuity
-- **Zero-config deployment**: SQLite + in-memory stores  - no external databases needed for POC
+- **Zero-config deployment**: SQLite + in-memory stores — no external databases needed for POC
 - **Real-time RM stream**: In-memory asyncio broadcast powers SSE so bankers see live client activity
+- **User-testing feedback**: Floating panel posts to `user_feedback` table; view locally via SQLite
