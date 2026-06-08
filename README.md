@@ -1,3 +1,13 @@
+---
+title: Brilliant Banker
+emoji: 🏦
+colorFrom: blue
+colorTo: orange
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # Brilliant Banker
 
 AI-powered banking POC: SMB owners get an in-app financial advisor; Relationship Managers get a CRM with AI briefs, warm leads, and one-tap credit decisions.
