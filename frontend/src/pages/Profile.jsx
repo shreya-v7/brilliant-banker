@@ -7,13 +7,12 @@ import {
   ShieldCheck,
   Phone,
   Sparkles,
-  LogOut,
   Link,
   Unlink,
   BookOpen,
   ChevronDown,
-  CheckCircle2,
 } from 'lucide-react'
+import { SessionBanner } from '../components/SessionControls'
 
 function fmt(n) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
@@ -82,6 +81,8 @@ export default function Profile({ user, onLogout }) {
 
   return (
     <div className="px-4 py-4 pb-8" data-walkthrough="smb-profile">
+      <SessionBanner user={user} onLogout={onLogout} />
+
       {/* Profile header */}
       <div className="flex items-center gap-4 mb-5">
         <div className="w-16 h-16 rounded-full bg-pnc-navy/5 flex items-center justify-center">
@@ -237,16 +238,6 @@ export default function Profile({ user, onLogout }) {
         </div>
       )}
 
-      {/* Logout */}
-      <button
-        onClick={onLogout}
-        className="w-full flex items-center justify-center gap-2 bg-white border border-red-200
-                   text-red-600 text-sm font-semibold py-3 rounded-xl
-                   active:bg-red-50 transition-colors"
-      >
-        <LogOut size={16} />
-        Sign out
-      </button>
     </div>
   )
 }

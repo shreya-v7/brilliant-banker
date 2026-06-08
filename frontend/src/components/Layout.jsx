@@ -1,5 +1,6 @@
-import { useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import BottomNav from './BottomNav'
+import { SessionStrip } from './SessionControls'
 
 const TITLES = {
   '/business': 'Home',
@@ -9,7 +10,7 @@ const TITLES = {
   '/business/profile': 'Profile',
 }
 
-export default function Layout({ user, children }) {
+export default function Layout({ user, onLogout, children }) {
   const { pathname } = useLocation()
   const title = TITLES[pathname] || 'Brilliant Banker'
   const hideHeader = pathname === '/business/chat'
@@ -22,9 +23,14 @@ export default function Layout({ user, children }) {
           <div className="w-28 h-5 bg-black rounded-full" />
         </div>
 
+        <SessionStrip user={user} onLogout={onLogout} />
+
         {!hideHeader && (
           <header className="bg-pnc-navy px-4 pt-3 pb-3 flex items-center justify-between shrink-0">
-            <div>
+            <div className="min-w-0">
+              <Link to="/" className="text-white/45 text-[10px] font-medium hover:text-white/80 transition-colors">
+                ← Home
+              </Link>
               <h1 className="text-white text-lg font-semibold">{title}</h1>
               {pathname === '/business' && (
                 <p className="text-pnc-gray-200 text-xs mt-0.5">
@@ -40,7 +46,7 @@ export default function Layout({ user, children }) {
           </header>
         )}
 
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto min-h-0">
           {children}
         </main>
 

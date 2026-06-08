@@ -14,6 +14,7 @@ import Profile from './pages/Profile'
 import Forms from './pages/Forms'
 import Layout from './components/Layout'
 import DemoGuide from './components/DemoGuide'
+import FeedbackPanel from './components/FeedbackPanel'
 
 // Banker pages
 import BankerLayout from './components/BankerLayout'
@@ -25,15 +26,30 @@ import BankerProfile from './pages/banker/BankerProfile'
 import { login, bankerLogin } from './api'
 import { MAYA_SMB_ID, PRIYA_SMB_ID, SARAH_BANKER_ID } from './constants/demo'
 
-function BankerGate({ user, onLogin, children }) {
-  if (!user) return <Login defaultMode="banker" onLogin={onLogin} />
-  if (user.role !== 'banker') return <Navigate to="/business" replace />
+function signinRedirect(user, role, fallback) {
+  if (user?.role === role) return fallback
+  if (user?.role === 'smb') return '/business'
+  if (user?.role === 'banker') return '/banker'
+  return null
+}
+
+function SmbGate({ user, children }) {
+  const location = useLocation()
+  if (!user) {
+    const next = encodeURIComponent(`${location.pathname}${location.search}`)
+    return <Navigate to={`/signin/smb?next=${next}`} replace />
+  }
+  if (user.role !== 'smb') return <Navigate to="/banker" replace />
   return children
 }
 
-function SmbGate({ user, onLogin, onShowScene, children }) {
-  if (!user) return <Login defaultMode="smb" onLogin={onLogin} onShowScene={onShowScene} />
-  if (user.role !== 'smb') return <Navigate to="/banker" replace />
+function BankerGate({ user, children }) {
+  const location = useLocation()
+  if (!user) {
+    const next = encodeURIComponent(`${location.pathname}${location.search}`)
+    return <Navigate to={`/signin/banker?next=${next}`} replace />
+  }
+  if (user.role !== 'banker') return <Navigate to="/business" replace />
   return children
 }
 
@@ -80,16 +96,9 @@ export default function App() {
         navigate(next, { replace: true })
         return
       }
-      const path = location.pathname
-      if (u.role === 'banker' && path.startsWith('/banker')) {
-        navigate(path, { replace: true })
-      } else if (u.role === 'smb' && path.startsWith('/business')) {
-        navigate(path, { replace: true })
-      } else {
-        navigate(u.role === 'banker' ? '/banker' : '/business', { replace: true })
-      }
+      navigate(u.role === 'banker' ? '/banker' : '/business', { replace: true })
     },
-    [navigate, location.pathname, location.search],
+    [navigate, location.search],
   )
 
   const handleSceneLogin = useCallback(async (smbId) => {
@@ -108,7 +117,6 @@ export default function App() {
     navigate('/banker', { replace: true })
   }, [navigate])
 
-  // Include bankers still on /business/* (demo handoff before navigate settles) so DemoGuide does not unmount and reset.
   const inAppShell =
     user &&
     ((user.role === 'smb' && isBusinessPath) ||
@@ -123,10 +131,42 @@ export default function App() {
         user.banker_id === SARAH_BANKER_ID &&
         (showDemo || isBankerPath || isBusinessPath)))
 
+  const loginProps = {
+    onLogin: handleLogin,
+    onShowMarketing: () => navigate('/marketing'),
+    onShowScene: () => navigate('/scene'),
+    signedInUser: user,
+  }
+
   return (
     <>
       <Routes>
         <Route path="/links" element={<ScreenLinks />} />
+
+        <Route
+          path="/"
+          element={<Login view="home" {...loginProps} />}
+        />
+        <Route
+          path="/signin/smb"
+          element={
+            signinRedirect(user, 'smb', '/business') ? (
+              <Navigate to={signinRedirect(user, 'smb', '/business')} replace />
+            ) : (
+              <Login view="smb" {...loginProps} />
+            )
+          }
+        />
+        <Route
+          path="/signin/banker"
+          element={
+            signinRedirect(user, 'banker', '/banker') ? (
+              <Navigate to={signinRedirect(user, 'banker', '/banker')} replace />
+            ) : (
+              <Login view="banker" {...loginProps} />
+            )
+          }
+        />
 
         <Route
           path="/scene"
@@ -146,8 +186,8 @@ export default function App() {
         <Route
           path="/banker"
           element={
-            <BankerGate user={user} onLogin={handleLogin}>
-              <BankerLayout user={user}>
+            <BankerGate user={user}>
+              <BankerLayout user={user} onLogout={handleLogout}>
                 <BankerDashboard user={user} />
               </BankerLayout>
             </BankerGate>
@@ -156,8 +196,8 @@ export default function App() {
         <Route
           path="/banker/clients"
           element={
-            <BankerGate user={user} onLogin={handleLogin}>
-              <BankerLayout user={user}>
+            <BankerGate user={user}>
+              <BankerLayout user={user} onLogout={handleLogout}>
                 <BankerClients user={user} />
               </BankerLayout>
             </BankerGate>
@@ -166,8 +206,8 @@ export default function App() {
         <Route
           path="/banker/clients/:id"
           element={
-            <BankerGate user={user} onLogin={handleLogin}>
-              <BankerLayout user={user}>
+            <BankerGate user={user}>
+              <BankerLayout user={user} onLogout={handleLogout}>
                 <BankerSMBProfile user={user} />
               </BankerLayout>
             </BankerGate>
@@ -176,8 +216,8 @@ export default function App() {
         <Route
           path="/banker/credit"
           element={
-            <BankerGate user={user} onLogin={handleLogin}>
-              <BankerLayout user={user}>
+            <BankerGate user={user}>
+              <BankerLayout user={user} onLogout={handleLogout}>
                 <BankerCreditReview user={user} />
               </BankerLayout>
             </BankerGate>
@@ -186,8 +226,8 @@ export default function App() {
         <Route
           path="/banker/profile"
           element={
-            <BankerGate user={user} onLogin={handleLogin}>
-              <BankerLayout user={user}>
+            <BankerGate user={user}>
+              <BankerLayout user={user} onLogout={handleLogout}>
                 <BankerProfile user={user} onLogout={handleLogout} />
               </BankerLayout>
             </BankerGate>
@@ -197,8 +237,8 @@ export default function App() {
         <Route
           path="/business"
           element={
-            <SmbGate user={user} onLogin={handleLogin} onShowScene={() => navigate('/scene')}>
-              <Layout user={user}>
+            <SmbGate user={user}>
+              <Layout user={user} onLogout={handleLogout}>
                 <Dashboard user={user} />
               </Layout>
             </SmbGate>
@@ -207,8 +247,8 @@ export default function App() {
         <Route
           path="/business/chat"
           element={
-            <SmbGate user={user} onLogin={handleLogin} onShowScene={() => navigate('/scene')}>
-              <Layout user={user}>
+            <SmbGate user={user}>
+              <Layout user={user} onLogout={handleLogout}>
                 <Chat user={user} />
               </Layout>
             </SmbGate>
@@ -217,8 +257,8 @@ export default function App() {
         <Route
           path="/business/forms"
           element={
-            <SmbGate user={user} onLogin={handleLogin} onShowScene={() => navigate('/scene')}>
-              <Layout user={user}>
+            <SmbGate user={user}>
+              <Layout user={user} onLogout={handleLogout}>
                 <Forms user={user} />
               </Layout>
             </SmbGate>
@@ -227,8 +267,8 @@ export default function App() {
         <Route
           path="/business/activity"
           element={
-            <SmbGate user={user} onLogin={handleLogin} onShowScene={() => navigate('/scene')}>
-              <Layout user={user}>
+            <SmbGate user={user}>
+              <Layout user={user} onLogout={handleLogout}>
                 <Activity user={user} />
               </Layout>
             </SmbGate>
@@ -237,26 +277,11 @@ export default function App() {
         <Route
           path="/business/profile"
           element={
-            <SmbGate user={user} onLogin={handleLogin} onShowScene={() => navigate('/scene')}>
-              <Layout user={user}>
+            <SmbGate user={user}>
+              <Layout user={user} onLogout={handleLogout}>
                 <Profile user={user} onLogout={handleLogout} />
               </Layout>
             </SmbGate>
-          }
-        />
-
-        <Route
-          path="/"
-          element={
-            user ? (
-              <Navigate to={user.role === 'banker' ? '/banker' : '/business'} replace />
-            ) : (
-              <Login
-                onLogin={handleLogin}
-                onShowMarketing={() => navigate('/marketing')}
-                onShowScene={() => navigate('/scene')}
-              />
-            )
           }
         />
 
@@ -271,8 +296,12 @@ export default function App() {
         />
       </Routes>
 
+      {inAppShell && user && (
+        <FeedbackPanel user={user} role={user.role} />
+      )}
+
       {inAppShell && walkthroughEligible && !showDemo && (
-        <div className="fixed bottom-6 right-6 z-[60] flex flex-col gap-2 items-end pointer-events-none">
+        <div className="fixed bottom-[5.75rem] right-6 z-[55] flex flex-col gap-2 items-end pointer-events-none">
           <button
             type="button"
             onClick={() => setShowDemo(true)}

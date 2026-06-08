@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import RMStreamFeed from './RMStreamFeed'
 import { Bell, Zap, Landmark, LayoutDashboard, Users, CreditCard, User, ChevronRight, Menu, X } from 'lucide-react'
 import { connectRMStream } from '../api'
+import { SignOutButton, SessionStrip } from './SessionControls'
 
 const BANKER_NAV = [
   { path: '/banker', icon: LayoutDashboard, label: 'Dashboard' },
@@ -11,7 +12,7 @@ const BANKER_NAV = [
   { path: '/banker/profile', icon: User, label: 'My Profile' },
 ]
 
-export default function BankerLayout({ user, children }) {
+export default function BankerLayout({ user, onLogout, children }) {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const [showFeed, setShowFeed] = useState(false)
@@ -114,7 +115,7 @@ export default function BankerLayout({ user, children }) {
         </nav>
 
         {/* Sidebar footer */}
-        <div className="px-3 pb-5 space-y-2">
+        <div className="px-3 pb-5 space-y-2 border-t border-white/10 pt-3">
           <button
             onClick={handleOpenFeed}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
@@ -129,6 +130,11 @@ export default function BankerLayout({ user, children }) {
               </span>
             )}
           </button>
+          <SignOutButton
+            onLogout={onLogout}
+            variant="sidebar"
+            label="Sign out & switch user"
+          />
         </div>
       </aside>
 
@@ -139,10 +145,16 @@ export default function BankerLayout({ user, children }) {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setShowMobileNav(true)}
-              className="lg:hidden w-8 h-8 rounded-lg bg-pnc-navy flex items-center justify-center mr-2"
+              className="lg:hidden w-8 h-8 rounded-lg bg-pnc-navy flex items-center justify-center"
             >
               <Menu size={16} className="text-pnc-orange" />
             </button>
+            <Link
+              to="/"
+              className="text-pnc-gray-500 text-xs font-medium hover:text-pnc-navy transition-colors hidden sm:inline"
+            >
+              ← Home
+            </Link>
             <div>
               <h1 className="text-pnc-gray-900 text-lg font-bold">{currentTitle}</h1>
               {pathname === '/banker' && (
@@ -151,8 +163,7 @@ export default function BankerLayout({ user, children }) {
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            {/* Live feed bell */}
+          <div className="flex items-center gap-3">
             <button
               onClick={handleOpenFeed}
               className="relative p-2 rounded-lg hover:bg-pnc-gray-100 transition-colors"
@@ -165,6 +176,13 @@ export default function BankerLayout({ user, children }) {
                 </span>
               )}
             </button>
+
+            <SignOutButton
+              onLogout={onLogout}
+              variant="light"
+              label="Sign out"
+              className="hidden sm:inline-flex"
+            />
 
             {/* RM avatar */}
             <div className="hidden sm:flex items-center gap-2.5 pl-4 border-l border-pnc-gray-200">
@@ -181,9 +199,13 @@ export default function BankerLayout({ user, children }) {
           </div>
         </header>
 
+        <div className="lg:hidden shrink-0">
+          <SessionStrip user={user} onLogout={onLogout} tone="light" />
+        </div>
+
         {/* Content area */}
-        <main className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-6xl mx-auto">
+        <main className="flex-1 overflow-y-auto p-6 min-h-0">
+          <div className="max-w-6xl mx-auto w-full">
             {children}
           </div>
         </main>
@@ -263,7 +285,7 @@ export default function BankerLayout({ user, children }) {
                 )
               })}
             </nav>
-            <div className="px-3 pb-5 space-y-2">
+            <div className="px-3 pb-5 space-y-2 border-t border-white/10 pt-3">
               <button
                 onClick={() => { handleOpenFeed(); setShowMobileNav(false) }}
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-white/50"
@@ -276,6 +298,14 @@ export default function BankerLayout({ user, children }) {
                   </span>
                 )}
               </button>
+              <SignOutButton
+                onLogout={() => {
+                  setShowMobileNav(false)
+                  onLogout()
+                }}
+                variant="sidebar"
+                label="Sign out & switch user"
+              />
             </div>
           </aside>
         </div>

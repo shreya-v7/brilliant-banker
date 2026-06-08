@@ -7,9 +7,9 @@ import {
   Users,
   CreditCard,
   CheckCircle2,
-  LogOut,
 } from 'lucide-react'
 import { getLeads, getBankerPortfolio } from '../../api'
+import { SessionBanner } from '../../components/SessionControls'
 
 function fmt(n) {
   if (n == null) return '--'
@@ -51,6 +51,8 @@ export default function BankerProfile({ user, onLogout }) {
 
   return (
     <div className="px-4 py-4 pb-8">
+      <SessionBanner user={user} onLogout={onLogout} />
+
       {/* Profile header */}
       <div className="flex items-center gap-4 mb-6">
         <div className="w-16 h-16 rounded-full bg-pnc-navy flex items-center justify-center">
@@ -118,16 +120,6 @@ export default function BankerProfile({ user, onLogout }) {
         />
       </div>
 
-      {/* Logout */}
-      <button
-        onClick={onLogout}
-        className="w-full flex items-center justify-center gap-2 bg-white border border-red-200
-                   text-red-600 text-sm font-semibold py-3 rounded-xl
-                   active:bg-red-50 transition-colors"
-      >
-        <LogOut size={16} />
-        Sign out
-      </button>
     </div>
   )
 }

@@ -57,54 +57,62 @@ export default function ScreenLinks() {
           className="inline-flex items-center gap-2 text-white/50 hover:text-white text-sm mb-6 transition-colors"
         >
           <ArrowLeft size={18} />
-          Back to sign-in
+          Home
         </Link>
 
         <h1 className="text-2xl font-bold mb-1">Screen links</h1>
         <p className="text-white/50 text-sm mb-8 leading-relaxed">
-          Each path is a direct URL. If you are signed out, SMB routes open the SMB sign-in flow and banker
-          routes open the banker sign-in flow - after login you land on the same path (deep link).
+          Every screen has its own URL. Sign-in is separate from the app so browser back returns to Home, not the login loop.
         </p>
 
         <section className="mb-10">
-          <h2 className="text-pnc-orange text-xs font-bold uppercase tracking-wider mb-3">Public</h2>
+          <h2 className="text-pnc-orange text-xs font-bold uppercase tracking-wider mb-3">Home & public</h2>
           <div className="bg-white/5 border border-white/10 rounded-2xl px-4">
-            <LinkRow to="/" title="Sign-in / role picker" hint="Landing" />
-            <LinkRow to="/links" title="This page - all screen URLs" />
-            <LinkRow to="/scene" title="Customer discovery skit (characters)" />
-            <LinkRow to="/marketing" title="Marketing" />
+            <LinkRow to="/" title="Home — role picker" hint="Always lands here; no auto-redirect" />
+            <LinkRow to="/links" title="This page — all screen URLs" />
+            <LinkRow to="/scene" title="Customer discovery skit" />
+            <LinkRow to="/marketing" title="Marketing page" />
           </div>
         </section>
 
         <section className="mb-10">
-          <h2 className="text-pnc-orange text-xs font-bold uppercase tracking-wider mb-3">SMB (sign in as a business user)</h2>
+          <h2 className="text-pnc-orange text-xs font-bold uppercase tracking-wider mb-3">Sign-in (pick a demo profile)</h2>
           <div className="bg-white/5 border border-white/10 rounded-2xl px-4">
-            <LinkRow to="/business" title="Dashboard" hint="Home - cash signal & summary" />
+            <LinkRow to="/signin/smb" title="SMB sign-in" hint="All demo business owners" />
+            <LinkRow to="/signin/smb?walkthrough=1" title="SMB walkthrough sign-in" hint="Maya & Priya only" />
+            <LinkRow to="/signin/banker" title="Banker sign-in" hint="All demo RMs" />
+            <LinkRow to="/signin/banker?walkthrough=1" title="Banker walkthrough sign-in" hint="Sarah Chen only" />
+          </div>
+        </section>
+
+        <section className="mb-10">
+          <h2 className="text-pnc-orange text-xs font-bold uppercase tracking-wider mb-3">SMB app (requires sign-in)</h2>
+          <div className="bg-white/5 border border-white/10 rounded-2xl px-4">
+            <LinkRow to="/business" title="Dashboard" hint="/business — home tab" />
             <LinkRow to="/business/chat" title="AI chat" />
             <LinkRow to="/business/forms" title="Forms" />
             <LinkRow to="/business/activity" title="Activity" hint="Credit & request status" />
-            <LinkRow to="/business/profile" title="Profile" hint="Business brief & details" />
+            <LinkRow to="/business/profile" title="Profile" hint="Business brief & logout" />
           </div>
         </section>
 
         <section className="mb-10">
-          <h2 className="text-pnc-orange text-xs font-bold uppercase tracking-wider mb-3">Banker (sign in as a banker)</h2>
+          <h2 className="text-pnc-orange text-xs font-bold uppercase tracking-wider mb-3">Banker portal (requires sign-in)</h2>
           <div className="bg-white/5 border border-white/10 rounded-2xl px-4">
-            <LinkRow to="/banker" title="Banker dashboard" hint="Priority queue" />
+            <LinkRow to="/banker" title="Dashboard" hint="Priority queue" />
             <LinkRow to="/banker/clients" title="Clients list" />
             <LinkRow
               to={`/banker/clients/${MAYA_SMB_ID}`}
-              title="Client detail (example: Maya Patel)"
-              hint="Replace UUID for another SMB from seed data"
+              title="Client detail — Maya Patel"
+              hint="Swap UUID for another SMB"
             />
             <LinkRow to="/banker/credit" title="Credit review" />
-            <LinkRow to="/banker/profile" title="Banker profile" />
+            <LinkRow to="/banker/profile" title="Banker profile & logout" />
           </div>
         </section>
 
         <p className="text-white/35 text-xs leading-relaxed">
-          Tip: share a link with query params omitted - auth is session-based after you pick a profile on the login
-          screen.
+          User testing feedback is a floating Feedback tab at the bottom-right of the screen (outside the phone mockup) after sign-in.
         </p>
       </div>
     </div>

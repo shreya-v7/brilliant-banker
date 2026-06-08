@@ -151,3 +151,10 @@ export function connectRMStream(onEvent) {
 
   return source;
 }
+
+export function submitFeedback(payload) {
+  return request('/feedback/submit', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
